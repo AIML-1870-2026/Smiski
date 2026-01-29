@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Web</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            background: #000;
+        }
+
+        .controls {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(100, 200, 255, 0.3);
+            border-radius: 20px;
+            padding: 30px;
+            min-width: 280px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls.minimized {
+            transform: translateY(-50%) translateX(-320px);
+        }
+
+        .stats-panel {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(100, 200, 255, 0.3);
+            border-radius: 20px;
+            padding: 25px;
+            min-width: 250px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .stats-panel.minimized {
+            transform: translateX(320px);
+        }
+
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(100, 200, 255, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .stats-title {
+            color: #fff;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .stats-toggle-btn {
+            width: 30px;
+            height: 30px;
+            background: rgba(100, 200, 255, 0.2);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 20px;
+            font-weight: 300;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .stats-toggle-btn:hover {
+            background: rgba(100, 200, 255, 0.3);
+            border-color: rgba(100, 200, 255, 0.5);
+        }
+
+        .stat-item {
+            margin-bottom: 15px;
+        }
+
+        .stat-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #4169E1;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        input[type="color"] {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+        }
+
+        .toggle-btn {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(100, 200, 255, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 28px;
+            font-weight: 300;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(100, 200, 255, 0.2);
+            border-color: rgba(100, 200, 255, 0.6);
+        }
+
+        .value-display {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        @keyframes rainbow {
+            0% { filter: hue-rotate(0deg) brightness(1.2); }
+            100% { filter: hue-rotate(360deg) brightness(1.2); }
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: rgba(20, 20, 20, 0.95);
+            border: 3px solid rgba(255, 50, 50, 0.6);
+            border-radius: 15px;
+            padding: 30px 40px;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 50, 50, 0.4);
+        }
+
+        .modal-title {
+            color: #ff3333;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .modal-message {
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 700;
+            border: 2px solid;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .modal-btn-no {
+            background: rgba(100, 200, 255, 0.2);
+            border-color: rgba(100, 200, 255, 0.5);
+            color: #6ac8ff;
+        }
+
+        .modal-btn-no:hover {
+            background: rgba(100, 200, 255, 0.4);
+            border-color: rgba(100, 200, 255, 0.8);
+        }
+
+        .modal-btn-yes {
+            background: rgba(255, 50, 50, 0.2);
+            border-color: rgba(255, 50, 50, 0.5);
+            color: #ff6666;
+        }
+
+        .modal-btn-yes:hover {
+            background: rgba(255, 50, 50, 0.4);
+            border-color: rgba(255, 50, 50, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <button class="toggle-btn" id="toggleBtn">−</button>
+    
+    <div class="controls" id="controls">
+        <div class="control-group">
+            <label for="nodeSpeed">Node Speed</label>
+            <input type="range" id="nodeSpeed" min="0.1" max="5" step="0.1" value="1">
+            <div class="value-display" id="speedValue">1.0</div>
+        </div>
+
+        <div class="control-group">
+            <label for="connectRadius">Connectivity Radius</label>
+            <input type="range" id="connectRadius" min="50" max="300" step="10" value="200">
+            <div class="value-display" id="radiusValue">200</div>
+        </div>
+
+        <div class="control-group">
+            <label for="nodeCount">Node Count</label>
+            <input type="range" id="nodeCount" min="20" max="200" step="10" value="150">
+            <div class="value-display" id="countValue">150</div>
+        </div>
+
+        <div class="control-group">
+            <label for="nodeSize">Node Size</label>
+            <input type="range" id="nodeSize" min="2" max="10" step="0.5" value="4">
+            <div class="value-display" id="sizeValue">4.0</div>
+        </div>
+
+        <div class="control-group">
+            <label for="edgeThickness">Edge Thickness</label>
+            <input type="range" id="edgeThickness" min="0.5" max="3" step="0.1" value="1">
+            <div class="value-display" id="thicknessValue">1.0</div>
+        </div>
+
+        <div class="control-group">
+            <label for="colorPicker">Color</label>
+            <input type="color" id="colorPicker" value="#4169E1">
+        </div>
+
+        <div class="control-group">
+            <button id="raveBtn" style="width: 100%; padding: 12px; background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3); border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;">
+                🎉 Rave Mode
+            </button>
+        </div>
+    </div>
+
+    <div class="stats-panel" id="statsPanel">
+        <div class="stats-header">
+            <div class="stats-title">Network Statistics</div>
+            <button class="stats-toggle-btn" id="toggleStatsBtn">−</button>
+        </div>
+        
+        <div class="stat-item">
+            <div class="stat-label">Total Edges</div>
+            <div class="stat-value" id="totalEdges">0</div>
+        </div>
+        
+        <div class="stat-item">
+            <div class="stat-label">Avg Connections/Node</div>
+            <div class="stat-value" id="avgConnections">0</div>
+        </div>
+        
+        <div class="stat-item">
+            <div class="stat-label">Network Density</div>
+            <div class="stat-value" id="networkDensity">0%</div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <div class="modal-title">⚠️ WARNING</div>
+            <div class="modal-message">THIS ACTION CANNOT BE UNDONE. DO YOU WISH TO PROCEED?</div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-no" id="modalNo">NO</button>
+                <button class="modal-btn modal-btn-yes" id="modalYes">YES</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Configuration
+        let config = {
+            nodeSpeed: 1,
+            connectRadius: 200,
+            nodeCount: 150,
+            nodeSize: 4,
+            edgeThickness: 1,
+            color: '#4169E1',
+            raveMode: false
+        };
+
+        // Rave mode variables
+        let raveHue = 0;
+        let raveFlashTimer = 0;
+        let leftBeamAngle = 0;
+        let rightBeamAngle = 0;
+
+        // Camera/viewport offset for panning
+        let camera = {
+            x: 0,
+            y: 0
+        };
+
+        // Mouse drag state
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        // Particle class
+        class Particle {
+            constructor() {
+                // Spawn particles in a larger area beyond the visible canvas
+                const margin = 200;
+                this.x = Math.random() * (canvas.width + margin * 2) - margin;
+                this.y = Math.random() * (canvas.height + margin * 2) - margin;
+                this.z = Math.random() * 1000; // Depth: 0 (far) to 1000 (near)
+                this.vx = (Math.random() - 0.5) * config.nodeSpeed;
+                this.vy = (Math.random() - 0.5) * config.nodeSpeed;
+                this.vz = (Math.random() - 0.5) * config.nodeSpeed * 2; // Flow through space
+                this.connections = []; // Store persistent connections
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.z += this.vz;
+
+                // Wrap around edges with extended boundaries for infinite space effect
+                const margin = 200;
+                if (this.x < -margin) this.x = canvas.width + margin;
+                if (this.x > canvas.width + margin) this.x = -margin;
+                if (this.y < -margin) this.y = canvas.height + margin;
+                if (this.y > canvas.height + margin) this.y = -margin;
+                
+                // Wrap z-coordinate for continuous depth flow
+                if (this.z < 0) this.z = 1000;
+                if (this.z > 1000) this.z = 0;
+            }
+
+            draw() {
+                // Calculate scale based on depth (perspective)
+                const scale = this.z / 1000; // 0 to 1
+                const size = config.nodeSize * (0.3 + scale * 0.7); // Smaller when far, larger when near
+                const opacity = 0.3 + scale * 0.7; // Dimmer when far, brighter when near
+                
+                // Use rainbow color in rave mode, otherwise use config color
+                if (config.raveMode) {
+                    const hue = (raveHue + this.x + this.y) % 360;
+                    ctx.fillStyle = `hsla(${hue}, 100%, 50%, ${opacity})`;
+                } else {
+                    // Convert hex to rgba
+                    const r = parseInt(config.color.slice(1, 3), 16);
+                    const g = parseInt(config.color.slice(3, 5), 16);
+                    const b = parseInt(config.color.slice(5, 7), 16);
+                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                }
+                
+                ctx.beginPath();
+                
+                // Draw circle with camera offset
+                const screenX = this.x + camera.x;
+                const screenY = this.y + camera.y;
+                
+                ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        let particles = [];
+        let networkStats = {
+            totalEdges: 0,
+            avgConnections: 0,
+            networkDensity: 0
+        };
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < config.nodeCount; i++) {
+                particles.push(new Particle());
+            }
+            buildConnections();
+        }
+
+        function buildConnections() {
+            // Clear existing connections
+            particles.forEach(p => p.connections = []);
+            
+            // Build new connections based on proximity and depth
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dz = particles[i].z - particles[j].z;
+                    
+                    // Only connect particles at similar depths
+                    if (Math.abs(dz) > 200) continue;
+                    
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < config.connectRadius) {
+                        particles[i].connections.push(j);
+                        particles[j].connections.push(i);
+                    }
+                }
+            }
+            
+            updateNetworkStats();
+        }
+
+        function updateNetworkStats() {
+            // Calculate total edges (divide by 2 because connections are bidirectional)
+            let totalConnections = 0;
+            particles.forEach(p => totalConnections += p.connections.length);
+            networkStats.totalEdges = totalConnections / 2;
+            
+            // Average connections per node
+            networkStats.avgConnections = (totalConnections / particles.length).toFixed(2);
+            
+            // Network density: actual edges / possible edges
+            const maxPossibleEdges = (particles.length * (particles.length - 1)) / 2;
+            networkStats.networkDensity = ((networkStats.totalEdges / maxPossibleEdges) * 100).toFixed(2);
+        }
+
+        function connectParticles() {
+            ctx.lineWidth = config.edgeThickness;
+
+            for (let i = 0; i < particles.length; i++) {
+                const particle = particles[i];
+                
+                // Draw all persistent connections for this particle
+                particle.connections.forEach(targetIdx => {
+                    // Only draw each connection once (from lower index to higher)
+                    if (i < targetIdx) {
+                        const target = particles[targetIdx];
+                        const dx = particle.x - target.x;
+                        const dy = particle.y - target.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // Calculate opacity based on distance and depth
+                        const maxDistance = config.connectRadius * 3; // Allow connections to stretch much further
+                        const distanceOpacity = Math.max(0, 1 - (distance / maxDistance));
+                        const avgZ = (particle.z + target.z) / 2;
+                        const depthScale = avgZ / 1000;
+                        const baseOpacity = distanceOpacity * (0.15 + depthScale * 0.35); // Reduced base opacity for subtlety
+                        const opacity = baseOpacity * 0.6; // Further reduce overall opacity
+                        
+                        if (opacity > 0.05) { // Only draw if opacity is meaningful
+                            if (config.raveMode) {
+                                const hue = (raveHue + particle.x + particle.y) % 360;
+                                ctx.strokeStyle = `hsla(${hue}, 100%, 50%, ${opacity})`;
+                            } else {
+                                // Convert hex to rgba
+                                const r = parseInt(config.color.slice(1, 3), 16);
+                                const g = parseInt(config.color.slice(3, 5), 16);
+                                const b = parseInt(config.color.slice(5, 7), 16);
+                                ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                            }
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(particle.x + camera.x, particle.y + camera.y);
+                            ctx.lineTo(target.x + camera.x, target.y + camera.y);
+                            ctx.stroke();
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateStatsDisplay() {
+            document.getElementById('totalEdges').textContent = Math.floor(networkStats.totalEdges);
+            document.getElementById('avgConnections').textContent = networkStats.avgConnections;
+            document.getElementById('networkDensity').textContent = networkStats.networkDensity + '%';
+        }
+
+        function drawStrobeLights() {
+            if (!config.raveMode) return;
+
+            // Update beam angles for sweeping motion
+            leftBeamAngle += 0.02;
+            rightBeamAngle += 0.025;
+
+            // Draw left corner strobe
+            const leftX = 0;
+            const leftY = canvas.height;
+            const leftHue = (raveHue + leftBeamAngle * 100) % 360;
+            
+            ctx.save();
+            ctx.translate(leftX, leftY);
+            
+            // Create gradient for beam
+            const leftGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, canvas.height * 1.5);
+            leftGradient.addColorStop(0, `hsla(${leftHue}, 100%, 70%, 0.4)`);
+            leftGradient.addColorStop(0.3, `hsla(${leftHue}, 100%, 50%, 0.2)`);
+            leftGradient.addColorStop(1, `hsla(${leftHue}, 100%, 50%, 0)`);
+            
+            ctx.fillStyle = leftGradient;
+            ctx.beginPath();
+            
+            // Draw cone of light
+            const leftAngle1 = -Math.PI/2 + Math.sin(leftBeamAngle) * 0.5 - 0.3;
+            const leftAngle2 = -Math.PI/2 + Math.sin(leftBeamAngle) * 0.5 + 0.3;
+            
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, canvas.height * 1.5, leftAngle1, leftAngle2);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+
+            // Draw right corner strobe
+            const rightX = canvas.width;
+            const rightY = canvas.height;
+            const rightHue = (raveHue + rightBeamAngle * 100 + 180) % 360;
+            
+            ctx.save();
+            ctx.translate(rightX, rightY);
+            
+            // Create gradient for beam
+            const rightGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, canvas.height * 1.5);
+            rightGradient.addColorStop(0, `hsla(${rightHue}, 100%, 70%, 0.4)`);
+            rightGradient.addColorStop(0.3, `hsla(${rightHue}, 100%, 50%, 0.2)`);
+            rightGradient.addColorStop(1, `hsla(${rightHue}, 100%, 50%, 0)`);
+            
+            ctx.fillStyle = rightGradient;
+            ctx.beginPath();
+            
+            // Draw cone of light
+            const rightAngle1 = -Math.PI/2 + Math.sin(rightBeamAngle) * 0.5 - 0.3;
+            const rightAngle2 = -Math.PI/2 + Math.sin(rightBeamAngle) * 0.5 + 0.3;
+            
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, canvas.height * 1.5, rightAngle1, rightAngle2);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        let frameCount = 0;
+
+        function animate() {
+            frameCount++;
+            
+            // Clear background
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update rave hue for color cycling
+            if (config.raveMode) {
+                raveHue = (raveHue + 3) % 360;
+            }
+
+            // Draw strobe lights first (behind particles)
+            drawStrobeLights();
+
+            // Update particles
+            particles.forEach(particle => {
+                particle.update();
+            });
+
+            // Rebuild connections less frequently (every 120 frames instead of 60) for smoother transitions
+            if (frameCount % 120 === 0) {
+                buildConnections();
+                updateStatsDisplay();
+            }
+
+            // Sort particles by depth (far to near) for proper layering
+            particles.sort((a, b) => a.z - b.z);
+
+            // Draw connections
+            connectParticles();
+
+            // Draw particles
+            particles.forEach(particle => {
+                particle.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Event listeners for controls
+        document.getElementById('nodeSpeed').addEventListener('input', (e) => {
+            config.nodeSpeed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = config.nodeSpeed.toFixed(1);
+            particles.forEach(particle => {
+                const speed = Math.sqrt(particle.vx ** 2 + particle.vy ** 2);
+                const angle = Math.atan2(particle.vy, particle.vx);
+                particle.vx = Math.cos(angle) * config.nodeSpeed;
+                particle.vy = Math.sin(angle) * config.nodeSpeed;
+            });
+        });
+
+        document.getElementById('connectRadius').addEventListener('input', (e) => {
+            config.connectRadius = parseInt(e.target.value);
+            document.getElementById('radiusValue').textContent = config.connectRadius;
+            buildConnections();
+            updateStatsDisplay();
+        });
+
+        document.getElementById('nodeCount').addEventListener('input', (e) => {
+            config.nodeCount = parseInt(e.target.value);
+            document.getElementById('countValue').textContent = config.nodeCount;
+            initParticles();
+            updateStatsDisplay();
+        });
+
+        document.getElementById('nodeSize').addEventListener('input', (e) => {
+            config.nodeSize = parseFloat(e.target.value);
+            document.getElementById('sizeValue').textContent = config.nodeSize.toFixed(1);
+        });
+
+        document.getElementById('edgeThickness').addEventListener('input', (e) => {
+            config.edgeThickness = parseFloat(e.target.value);
+            document.getElementById('thicknessValue').textContent = config.edgeThickness.toFixed(1);
+        });
+
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            config.color = e.target.value;
+        });
+
+        // Rave mode toggle
+        document.getElementById('raveBtn').addEventListener('click', () => {
+            config.raveMode = !config.raveMode;
+            const btn = document.getElementById('raveBtn');
+            if (config.raveMode) {
+                btn.textContent = '🎉 Rave Mode: ON';
+                btn.style.animation = 'rainbow 2s linear infinite';
+            } else {
+                btn.textContent = '🎉 Rave Mode';
+                btn.style.animation = 'none';
+            }
+        });
+
+        // Toggle button
+        document.getElementById('toggleBtn').addEventListener('click', () => {
+            const controls = document.getElementById('controls');
+            controls.classList.toggle('minimized');
+        });
+
+        // Toggle stats panel button - show warning modal
+        document.getElementById('toggleStatsBtn').addEventListener('click', () => {
+            const modal = document.getElementById('modalOverlay');
+            modal.classList.add('active');
+        });
+
+        // Modal NO button - keep the stats panel
+        document.getElementById('modalNo').addEventListener('click', () => {
+            const modal = document.getElementById('modalOverlay');
+            modal.classList.remove('active');
+        });
+
+        // Modal YES button - permanently remove the stats panel
+        document.getElementById('modalYes').addEventListener('click', () => {
+            const modal = document.getElementById('modalOverlay');
+            const statsPanel = document.getElementById('statsPanel');
+            
+            modal.classList.remove('active');
+            statsPanel.style.display = 'none';
+        });
+
+        // Mouse drag events for panning
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            canvas.style.cursor = 'grabbing';
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+                
+                camera.x += deltaX;
+                camera.y += deltaY;
+                
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        // Set initial cursor
+        canvas.style.cursor = 'grab';
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Initialize and start animation
+        initParticles();
+        animate();
+    </script>
+</body>
+</html>

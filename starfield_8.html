@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starfield Particle System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            color: #fff;
+            min-width: 250px;
+            max-width: 300px;
+            cursor: move;
+            user-select: none;
+        }
+        
+        .controls.dragging {
+            opacity: 0.8;
+        }
+        
+        .controls.minimized {
+            padding: 10px 20px;
+        }
+        
+        .controls.minimized .control-group {
+            display: none;
+        }
+        
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            cursor: move;
+        }
+        
+        .controls-title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .minimize-button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .minimize-button:hover {
+            background: #1976D2;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .value-display {
+            display: inline-block;
+            min-width: 40px;
+            text-align: right;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starfield"></canvas>
+    
+    <div class="controls">
+        <div class="controls-header">
+            <div class="controls-title">Starfield Controls</div>
+            <button class="minimize-button" id="minimizeButton">Minimize</button>
+        </div>
+        
+        <div class="control-group">
+            <label>
+                Trail Length: <span class="value-display" id="trailValue">20</span>
+            </label>
+            <input type="range" id="trailLength" min="5" max="50" value="20" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>
+                Star Count: <span class="value-display" id="countValue">200</span>
+            </label>
+            <input type="range" id="starCount" min="50" max="500" value="200" step="10">
+        </div>
+        
+        <div class="control-group">
+            <label>
+                Star Speed: <span class="value-display" id="speedValue">0.10x</span>
+            </label>
+            <input type="range" id="starSpeed" min="0.01" max="0.5" value="0.10" step="0.01">
+        </div>
+        
+        <div class="control-group">
+            <label>
+                Spawn Radius: <span class="value-display" id="radiusValue">10</span>
+            </label>
+            <input type="range" id="spawnRadius" min="5" max="50" value="10" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>
+                Star Size: <span class="value-display" id="sizeValue">0.3x</span>
+            </label>
+            <input type="range" id="starSize" min="0.1" max="3.0" value="0.3" step="0.1">
+        </div>
+        
+        <div class="control-group">
+            <label>
+                Star Color: <span class="value-display" id="starColorValue">White</span>
+            </label>
+            <input type="range" id="starColor" min="0" max="360" value="0" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>
+                Trail Color: <span class="value-display" id="trailColorValue">White</span>
+            </label>
+            <input type="range" id="trailColor" min="0" max="360" value="0" step="1">
+        </div>
+        
+        <div class="control-group">
+            <button id="strobeButton" style="width: 100%; padding: 10px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold;">
+                Strobe Effect: OFF
+            </button>
+        </div>
+        
+        <div class="control-group">
+            <button id="rainbowButton" style="width: 100%; padding: 10px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold;">
+                Rainbow (All): OFF
+            </button>
+        </div>
+        
+        <div class="control-group">
+            <button id="starRainbowButton" style="width: 100%; padding: 10px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold;">
+                Rainbow (Stars): OFF
+            </button>
+        </div>
+        
+        <div class="control-group">
+            <button id="swirlButton" style="width: 100%; padding: 10px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 14px; font-weight: bold;">
+                Swirl Effect: OFF
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Configuration
+        let config = {
+            trailLength: 20,
+            starCount: 200,
+            speed: 0.10,
+            spawnRadius: 10,
+            starSize: 0.3,
+            starHue: 0,
+            trailHue: 0,
+            strobeEffect: false,
+            rainbowEffect: false,
+            starRainbowEffect: false,
+            swirlEffect: false,
+            centerX: 0,
+            centerY: 0
+        };
+
+        // Star class
+        class Star {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                // Start from center (using config center position)
+                this.x = (canvas.width / 2) + config.centerX;
+                this.y = (canvas.height / 2) + config.centerY;
+                
+                // Random angle for outward direction
+                this.angle = Math.random() * Math.PI * 2;
+                
+                // Random speed variation
+                this.baseSpeed = (Math.random() * 2 + 1) * config.speed * 100;
+                
+                // Random color for rainbow effect
+                this.rainbowHue = Math.random() * 360;
+                
+                this.trail = [];
+                this.age = 0;
+                this.swirlOffset = 0;
+            }
+
+            update() {
+                this.age++;
+                
+                // Move outward from center
+                const speed = this.baseSpeed * config.speed * 10;
+                
+                // Apply swirl effect if enabled
+                if (config.swirlEffect) {
+                    this.swirlOffset += 0.05;
+                    const swirlRadius = this.age * 0.5;
+                    this.x += Math.cos(this.angle + this.swirlOffset) * speed;
+                    this.y += Math.sin(this.angle + this.swirlOffset) * speed;
+                } else {
+                    this.x += Math.cos(this.angle) * speed;
+                    this.y += Math.sin(this.angle) * speed;
+                }
+
+                // Reset if off screen
+                if (this.x < -50 || this.x > canvas.width + 50 || 
+                    this.y < -50 || this.y > canvas.height + 50) {
+                    this.reset();
+                }
+
+                // Add to trail
+                this.trail.push({ x: this.x, y: this.y });
+                
+                // Limit trail length
+                if (this.trail.length > config.trailLength) {
+                    this.trail.shift();
+                }
+            }
+
+            drawStar(x, y, size, color) {
+                const spikes = 5;
+                const outerRadius = size;
+                const innerRadius = size * 0.4;
+                
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(Math.PI / 2);
+                
+                ctx.beginPath();
+                for (let i = 0; i < spikes * 2; i++) {
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const angle = (i * Math.PI) / spikes;
+                    const px = Math.cos(angle) * radius;
+                    const py = Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(px, py);
+                    } else {
+                        ctx.lineTo(px, py);
+                    }
+                }
+                ctx.closePath();
+                
+                ctx.fillStyle = color;
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            draw() {
+                if (this.trail.length < 2) return;
+
+                // Determine which hue to use for star and trail
+                let currentStarHue, currentTrailHue;
+                
+                if (config.rainbowEffect) {
+                    // Rainbow all - both star and trail use rainbow
+                    currentStarHue = this.rainbowHue;
+                    currentTrailHue = this.rainbowHue;
+                } else if (config.starRainbowEffect) {
+                    // Star rainbow only - star uses rainbow, trail uses setting
+                    currentStarHue = this.rainbowHue;
+                    currentTrailHue = config.trailHue;
+                } else {
+                    // No rainbow - use manual settings
+                    currentStarHue = config.starHue;
+                    currentTrailHue = config.trailHue;
+                }
+
+                // Draw trail
+                for (let i = 1; i < this.trail.length; i++) {
+                    const point = this.trail[i];
+                    const prevPoint = this.trail[i - 1];
+                    
+                    // Calculate opacity based on position in trail
+                    const opacity = i / this.trail.length;
+                    
+                    // Calculate line width
+                    const lineWidth = Math.max(0.5, config.starSize);
+
+                    // Use HSL color based on trail hue setting
+                    if (currentTrailHue === 0 && !config.rainbowEffect) {
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.6})`;
+                    } else {
+                        ctx.strokeStyle = `hsla(${currentTrailHue}, 100%, 70%, ${opacity * 0.6})`;
+                    }
+                    ctx.lineWidth = lineWidth;
+                    ctx.lineCap = 'round';
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(prevPoint.x, prevPoint.y);
+                    ctx.lineTo(point.x, point.y);
+                    ctx.stroke();
+                }
+
+                // Draw star shape at the end
+                const lastPoint = this.trail[this.trail.length - 1];
+                const size = Math.max(2, config.starSize * 4);
+
+                let color;
+                if (currentStarHue === 0 && !config.rainbowEffect && !config.starRainbowEffect) {
+                    color = 'rgba(255, 255, 255, 1)';
+                } else {
+                    color = `hsla(${currentStarHue}, 100%, 80%, 1)`;
+                }
+                
+                this.drawStar(lastPoint.x, lastPoint.y, size, color);
+            }
+        }
+
+        // Create stars array
+        let stars = [];
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < config.starCount; i++) {
+                stars.push(new Star());
+            }
+        }
+        initStars();
+
+        // Animation loop
+        let frameCount = 0;
+        function animate() {
+            frameCount++;
+            
+            // Strobe effect - skip frames
+            if (config.strobeEffect && frameCount % 4 < 2) {
+                requestAnimationFrame(animate);
+                return;
+            }
+            
+            // Fade effect for trails
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update and draw stars
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        animate();
+
+        // Control handlers
+        const trailSlider = document.getElementById('trailLength');
+        const countSlider = document.getElementById('starCount');
+        const speedSlider = document.getElementById('starSpeed');
+        const radiusSlider = document.getElementById('spawnRadius');
+        const sizeSlider = document.getElementById('starSize');
+        const starColorSlider = document.getElementById('starColor');
+        const trailColorSlider = document.getElementById('trailColor');
+
+        const trailValue = document.getElementById('trailValue');
+        const countValue = document.getElementById('countValue');
+        const speedValue = document.getElementById('speedValue');
+        const radiusValue = document.getElementById('radiusValue');
+        const sizeValue = document.getElementById('sizeValue');
+        const starColorValue = document.getElementById('starColorValue');
+        const trailColorValue = document.getElementById('trailColorValue');
+
+        const colorNames = {
+            0: 'White',
+            30: 'Orange',
+            60: 'Yellow',
+            120: 'Green',
+            180: 'Cyan',
+            240: 'Blue',
+            300: 'Magenta',
+            360: 'Red'
+        };
+
+        function getColorName(hue) {
+            if (hue === 0) return 'White';
+            if (hue <= 30) return 'Red-Orange';
+            if (hue <= 60) return 'Orange-Yellow';
+            if (hue <= 90) return 'Yellow-Green';
+            if (hue <= 150) return 'Green-Cyan';
+            if (hue <= 210) return 'Cyan-Blue';
+            if (hue <= 270) return 'Blue-Magenta';
+            if (hue <= 330) return 'Magenta-Red';
+            return 'Red';
+        }
+
+        trailSlider.addEventListener('input', (e) => {
+            config.trailLength = parseInt(e.target.value);
+            trailValue.textContent = config.trailLength;
+        });
+
+        countSlider.addEventListener('input', (e) => {
+            config.starCount = parseInt(e.target.value);
+            countValue.textContent = config.starCount;
+            initStars();
+        });
+
+        speedSlider.addEventListener('input', (e) => {
+            config.speed = parseFloat(e.target.value);
+            speedValue.textContent = config.speed.toFixed(2) + 'x';
+        });
+
+        radiusSlider.addEventListener('input', (e) => {
+            config.spawnRadius = parseInt(e.target.value);
+            radiusValue.textContent = config.spawnRadius;
+        });
+
+        sizeSlider.addEventListener('input', (e) => {
+            config.starSize = parseFloat(e.target.value);
+            sizeValue.textContent = config.starSize.toFixed(1) + 'x';
+        });
+
+        starColorSlider.addEventListener('input', (e) => {
+            config.starHue = parseInt(e.target.value);
+            starColorValue.textContent = getColorName(config.starHue);
+        });
+
+        trailColorSlider.addEventListener('input', (e) => {
+            config.trailHue = parseInt(e.target.value);
+            trailColorValue.textContent = getColorName(config.trailHue);
+        });
+
+        const strobeButton = document.getElementById('strobeButton');
+        strobeButton.addEventListener('click', () => {
+            config.strobeEffect = !config.strobeEffect;
+            strobeButton.textContent = `Strobe Effect: ${config.strobeEffect ? 'ON' : 'OFF'}`;
+            strobeButton.style.background = config.strobeEffect ? '#f44336' : '#4CAF50';
+        });
+
+        const rainbowButton = document.getElementById('rainbowButton');
+        rainbowButton.addEventListener('click', () => {
+            config.rainbowEffect = !config.rainbowEffect;
+            rainbowButton.textContent = `Rainbow (All): ${config.rainbowEffect ? 'ON' : 'OFF'}`;
+            rainbowButton.style.background = config.rainbowEffect ? '#FF1493' : '#4CAF50';
+            
+            // Disable color sliders when rainbow all is on
+            starColorSlider.disabled = config.rainbowEffect;
+            starColorSlider.style.opacity = config.rainbowEffect ? '0.5' : '1';
+            trailColorSlider.disabled = config.rainbowEffect;
+            trailColorSlider.style.opacity = config.rainbowEffect ? '0.5' : '1';
+            
+            // Disable star rainbow if all rainbow is on
+            if (config.rainbowEffect) {
+                config.starRainbowEffect = false;
+                starRainbowButton.textContent = 'Rainbow (Stars): OFF';
+                starRainbowButton.style.background = '#4CAF50';
+            }
+        });
+
+        const starRainbowButton = document.getElementById('starRainbowButton');
+        starRainbowButton.addEventListener('click', () => {
+            config.starRainbowEffect = !config.starRainbowEffect;
+            starRainbowButton.textContent = `Rainbow (Stars): ${config.starRainbowEffect ? 'ON' : 'OFF'}`;
+            starRainbowButton.style.background = config.starRainbowEffect ? '#FF69B4' : '#4CAF50';
+            
+            // Disable only star color slider when star rainbow is on
+            starColorSlider.disabled = config.starRainbowEffect || config.rainbowEffect;
+            starColorSlider.style.opacity = (config.starRainbowEffect || config.rainbowEffect) ? '0.5' : '1';
+            
+            // Disable rainbow all if star rainbow is on
+            if (config.starRainbowEffect) {
+                config.rainbowEffect = false;
+                rainbowButton.textContent = 'Rainbow (All): OFF';
+                rainbowButton.style.background = '#4CAF50';
+                trailColorSlider.disabled = false;
+                trailColorSlider.style.opacity = '1';
+            }
+        });
+
+        const swirlButton = document.getElementById('swirlButton');
+        swirlButton.addEventListener('click', () => {
+            config.swirlEffect = !config.swirlEffect;
+            swirlButton.textContent = `Swirl Effect: ${config.swirlEffect ? 'ON' : 'OFF'}`;
+            swirlButton.style.background = config.swirlEffect ? '#9C27B0' : '#4CAF50';
+        });
+
+        // Minimize button functionality
+        const minimizeButton = document.getElementById('minimizeButton');
+        let isMinimized = false;
+        
+        minimizeButton.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent drag from triggering
+            isMinimized = !isMinimized;
+            controlsPanel.classList.toggle('minimized', isMinimized);
+            minimizeButton.textContent = isMinimized ? 'Expand' : 'Minimize';
+        });
+
+        // Drag functionality for starfield center
+        let isDraggingCenter = false;
+        let centerDragInitialX;
+        let centerDragInitialY;
+        
+        canvas.addEventListener('mousedown', (e) => {
+            // Don't interfere with control panel dragging
+            if (e.target !== canvas) return;
+            
+            isDraggingCenter = true;
+            centerDragInitialX = e.clientX;
+            centerDragInitialY = e.clientY;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDraggingCenter) {
+                const deltaX = e.clientX - centerDragInitialX;
+                const deltaY = e.clientY - centerDragInitialY;
+                
+                config.centerX += deltaX;
+                config.centerY += deltaY;
+                
+                centerDragInitialX = e.clientX;
+                centerDragInitialY = e.clientY;
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDraggingCenter = false;
+        });
+        
+        // Touch events for mobile center dragging
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.target !== canvas) return;
+            
+            isDraggingCenter = true;
+            centerDragInitialX = e.touches[0].clientX;
+            centerDragInitialY = e.touches[0].clientY;
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            if (isDraggingCenter) {
+                e.preventDefault();
+                const deltaX = e.touches[0].clientX - centerDragInitialX;
+                const deltaY = e.touches[0].clientY - centerDragInitialY;
+                
+                config.centerX += deltaX;
+                config.centerY += deltaY;
+                
+                centerDragInitialX = e.touches[0].clientX;
+                centerDragInitialY = e.touches[0].clientY;
+            }
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            isDraggingCenter = false;
+        });
+
+        // Drag functionality for controls
+        const controlsPanel = document.querySelector('.controls');
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        controlsPanel.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        // Touch events for mobile
+        controlsPanel.addEventListener('touchstart', dragStart);
+        document.addEventListener('touchmove', drag);
+        document.addEventListener('touchend', dragEnd);
+
+        function dragStart(e) {
+            // Don't drag if clicking on input elements or buttons
+            if (e.target.tagName === 'INPUT' || e.target.id === 'minimizeButton' || 
+                e.target.classList.contains('minimize-button')) {
+                return;
+            }
+            
+            // Only allow dragging from header or empty space
+            if (e.target.tagName === 'BUTTON' && e.target.id !== 'minimizeButton') {
+                return;
+            }
+
+            if (e.type === 'touchstart') {
+                initialX = e.touches[0].clientX - xOffset;
+                initialY = e.touches[0].clientY - yOffset;
+            } else {
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+            }
+
+            isDragging = true;
+            controlsPanel.classList.add('dragging');
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+
+                if (e.type === 'touchmove') {
+                    currentX = e.touches[0].clientX - initialX;
+                    currentY = e.touches[0].clientY - initialY;
+                } else {
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+                }
+
+                xOffset = currentX;
+                yOffset = currentY;
+
+                setTranslate(currentX, currentY, controlsPanel);
+            }
+        }
+
+        function dragEnd(e) {
+            isDragging = false;
+            controlsPanel.classList.remove('dragging');
+        }
+
+        function setTranslate(xPos, yPos, el) {
+            el.style.transform = `translate(${xPos}px, ${yPos}px)`;
+        }
+    </script>
+</body>
+</html>

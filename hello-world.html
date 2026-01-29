@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello, World!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chewy&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pink-primary: #FFB3D9;
+            --pink-light: #FFE5F0;
+            --pink-accent: #FF69B4;
+            --cream: #FFF9F0;
+            --brown: #8B4513;
+            --green: #90EE90;
+            --blue-sky: #B3E5FC;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 60%, white, transparent),
+                radial-gradient(1px 1px at 33% 80%, white, transparent),
+                radial-gradient(2px 2px at 15% 90%, white, transparent),
+                radial-gradient(1px 1px at 75% 25%, white, transparent),
+                radial-gradient(1px 1px at 40% 15%, white, transparent),
+                radial-gradient(2px 2px at 65% 45%, white, transparent),
+                radial-gradient(1px 1px at 25% 55%, white, transparent),
+                radial-gradient(1px 1px at 85% 85%, white, transparent),
+                radial-gradient(2px 2px at 10% 40%, white, transparent),
+                radial-gradient(1px 1px at 95% 35%, white, transparent),
+                radial-gradient(1px 1px at 45% 95%, white, transparent),
+                radial-gradient(2px 2px at 70% 15%, white, transparent),
+                radial-gradient(1px 1px at 30% 65%, white, transparent),
+                radial-gradient(1px 1px at 55% 85%, white, transparent),
+                radial-gradient(2px 2px at 5% 75%, white, transparent),
+                radial-gradient(1px 1px at 88% 50%, white, transparent),
+                radial-gradient(1px 1px at 12% 20%, white, transparent),
+                radial-gradient(1px 1px at 42% 35%, white, transparent),
+                radial-gradient(1px 1px at 68% 55%, white, transparent),
+                radial-gradient(1px 1px at 22% 72%, white, transparent),
+                radial-gradient(1px 1px at 92% 25%, white, transparent),
+                radial-gradient(1px 1px at 18% 48%, white, transparent),
+                radial-gradient(1px 1px at 52% 18%, white, transparent),
+                radial-gradient(1px 1px at 78% 82%, white, transparent),
+                radial-gradient(1px 1px at 35% 42%, white, transparent),
+                radial-gradient(1px 1px at 62% 28%, white, transparent),
+                radial-gradient(1px 1px at 8% 62%, white, transparent),
+                radial-gradient(1px 1px at 98% 72%, white, transparent),
+                radial-gradient(1px 1px at 48% 62%, white, transparent),
+                radial-gradient(1px 1px at 28% 12%, white, transparent),
+                radial-gradient(1px 1px at 72% 38%, white, transparent),
+                radial-gradient(1px 1px at 38% 88%, white, transparent),
+                radial-gradient(1px 1px at 82% 48%, white, transparent),
+                radial-gradient(1px 1px at 58% 8%, white, transparent),
+                radial-gradient(1px 1px at 14% 58%, white, transparent),
+                radial-gradient(1px 1px at 88% 92%, white, transparent),
+                linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            background-size:
+                200% 200%, 200% 200%, 200% 200%, 200% 200%, 200% 200%,
+                200% 200%, 200% 200%, 200% 200%, 200% 200%, 200% 200%,
+                200% 200%, 200% 200%, 200% 200%, 200% 200%, 200% 200%,
+                200% 200%, 200% 200%, 200% 200%, 200% 200%, 200% 200%,
+                200% 200%, 200% 200%, 200% 200%, 200% 200%, 200% 200%,
+                200% 200%, 200% 200%, 200% 200%, 200% 200%, 200% 200%,
+                200% 200%, 200% 200%, 200% 200%, 200% 200%, 200% 200%,
+                200% 200%, 200% 200%, 200% 200%, 200% 200%, 200% 200%,
+                100% 100%;
+            font-family: 'Nunito', sans-serif;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                linear-gradient(90deg,
+                    transparent 0%,
+                    rgba(138, 43, 226, 0.3) 20%,
+                    rgba(75, 0, 130, 0.4) 40%,
+                    rgba(255, 105, 180, 0.3) 60%,
+                    rgba(138, 43, 226, 0.3) 80%,
+                    transparent 100%
+                );
+            animation: aurora 15s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                linear-gradient(180deg,
+                    transparent 0%,
+                    rgba(0, 255, 255, 0.2) 30%,
+                    rgba(138, 43, 226, 0.3) 50%,
+                    rgba(255, 105, 180, 0.2) 70%,
+                    transparent 100%
+                );
+            animation: aurora2 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @keyframes aurora {
+            0%, 100% {
+                opacity: 0.5;
+                transform: translateX(-10%) scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: translateX(10%) scale(1.1);
+            }
+        }
+
+        @keyframes aurora2 {
+            0%, 100% {
+                opacity: 0.4;
+                transform: translateY(-5%) scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: translateY(5%) scale(1.05);
+            }
+        }
+
+        /* Ground decoration */
+        .ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(to top, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Snowflakes */
+        .snowflake {
+            position: fixed;
+            top: -10px;
+            color: white;
+            font-size: 1rem;
+            opacity: 0.8;
+            animation: snowfall linear infinite;
+            z-index: 5;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+        }
+
+        @keyframes snowfall {
+            0% {
+                transform: translateY(-10px) rotate(0deg);
+                opacity: 0.8;
+            }
+            60% {
+                opacity: 0.8;
+            }
+            65% {
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(calc(50vh + 10px)) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .snowflake:nth-child(1) { left: 5%; animation-duration: 10s; animation-delay: 0s; }
+        .snowflake:nth-child(2) { left: 15%; animation-duration: 12s; animation-delay: 1s; }
+        .snowflake:nth-child(3) { left: 25%; animation-duration: 9s; animation-delay: 2s; }
+        .snowflake:nth-child(4) { left: 35%; animation-duration: 11s; animation-delay: 0.5s; }
+        .snowflake:nth-child(5) { left: 45%; animation-duration: 13s; animation-delay: 1.5s; }
+        .snowflake:nth-child(6) { left: 55%; animation-duration: 10s; animation-delay: 3s; }
+        .snowflake:nth-child(7) { left: 65%; animation-duration: 12s; animation-delay: 0.8s; }
+        .snowflake:nth-child(8) { left: 75%; animation-duration: 11s; animation-delay: 2.5s; }
+        .snowflake:nth-child(9) { left: 85%; animation-duration: 9s; animation-delay: 1.2s; }
+        .snowflake:nth-child(10) { left: 95%; animation-duration: 13s; animation-delay: 2.8s; }
+        .snowflake:nth-child(11) { left: 10%; animation-duration: 10s; animation-delay: 4s; font-size: 0.8rem; }
+        .snowflake:nth-child(12) { left: 20%; animation-duration: 11s; animation-delay: 3.5s; font-size: 1.2rem; }
+        .snowflake:nth-child(13) { left: 30%; animation-duration: 12s; animation-delay: 5s; font-size: 0.9rem; }
+        .snowflake:nth-child(14) { left: 40%; animation-duration: 9s; animation-delay: 4.2s; font-size: 1.1rem; }
+        .snowflake:nth-child(15) { left: 50%; animation-duration: 13s; animation-delay: 5.5s; }
+        .snowflake:nth-child(16) { left: 60%; animation-duration: 10s; animation-delay: 6s; font-size: 0.8rem; }
+        .snowflake:nth-child(17) { left: 70%; animation-duration: 11s; animation-delay: 4.8s; font-size: 1.2rem; }
+        .snowflake:nth-child(18) { left: 80%; animation-duration: 12s; animation-delay: 6.5s; }
+        .snowflake:nth-child(19) { left: 90%; animation-duration: 9s; animation-delay: 5.2s; font-size: 0.9rem; }
+        .snowflake:nth-child(20) { left: 12%; animation-duration: 13s; animation-delay: 7s; font-size: 1.1rem; }
+
+        /* Silhouettes */
+        .silhouettes {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* Hills */
+        .hill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 180px;
+            background: linear-gradient(to bottom, #2a4a68 0%, #1a3a58 50%, #0a1628 100%);
+            border-radius: 50% 50% 0 0 / 20% 20% 0 0;
+            box-shadow: inset 0 -20px 40px rgba(42, 74, 104, 0.3);
+        }
+
+        /* Pine trees */
+        .pine-tree {
+            position: absolute;
+            bottom: 0;
+        }
+
+        .pine-tree-1 {
+            left: 8%;
+            bottom: 140px;
+        }
+
+        .pine-tree-2 {
+            left: 18%;
+            bottom: 160px;
+        }
+
+        .pine-tree-3 {
+            left: 28%;
+            bottom: 130px;
+        }
+
+        .pine-tree-4 {
+            left: 38%;
+            bottom: 150px;
+        }
+
+        .pine-tree-5 {
+            right: 38%;
+            bottom: 170px;
+        }
+
+        .pine-tree-6 {
+            right: 28%;
+            bottom: 145px;
+        }
+
+        .pine-tree-7 {
+            right: 18%;
+            bottom: 165px;
+        }
+
+        .pine-tree-8 {
+            right: 8%;
+            bottom: 135px;
+        }
+
+        .tree-trunk {
+            width: 10px;
+            height: 30px;
+            background: #0a1628;
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .tree-branches {
+            width: 0;
+            height: 0;
+            border-left: 25px solid transparent;
+            border-right: 25px solid transparent;
+            border-bottom: 80px solid #0a1628;
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .tree-branches::before {
+            content: '';
+            position: absolute;
+            top: -90px;
+            left: -20px;
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-bottom: 70px solid #0a1628;
+        }
+
+        .tree-branches::after {
+            content: '';
+            position: absolute;
+            top: -130px;
+            left: -15px;
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 50px solid #0a1628;
+        }
+
+        /* Add mid-layer branches */
+        .pine-tree::before {
+            content: '';
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 23px solid transparent;
+            border-right: 23px solid transparent;
+            border-bottom: 60px solid #0a1628;
+        }
+
+        .pine-tree::after {
+            content: '';
+            position: absolute;
+            bottom: 130px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 17px solid transparent;
+            border-right: 17px solid transparent;
+            border-bottom: 45px solid #0a1628;
+        }
+
+        /* Varied tree sizes */
+        .pine-tree-2 .tree-branches {
+            border-left-width: 30px;
+            border-right-width: 30px;
+            border-bottom: 90px solid #0a1628;
+        }
+
+        .pine-tree-2 .tree-branches::before {
+            border-left-width: 25px;
+            border-right-width: 25px;
+            border-bottom: 80px solid #0a1628;
+            top: -100px;
+            left: -25px;
+        }
+
+        .pine-tree-2 .tree-branches::after {
+            border-left-width: 18px;
+            border-right-width: 18px;
+            border-bottom: 60px solid #0a1628;
+            top: -145px;
+            left: -18px;
+        }
+
+        .pine-tree-2::before {
+            border-left-width: 28px;
+            border-right-width: 28px;
+            border-bottom: 70px solid #0a1628;
+            bottom: 90px;
+        }
+
+        .pine-tree-2::after {
+            border-left-width: 20px;
+            border-right-width: 20px;
+            border-bottom: 55px solid #0a1628;
+            bottom: 150px;
+        }
+
+        .pine-tree-4 .tree-branches {
+            border-left-width: 20px;
+            border-right-width: 20px;
+            border-bottom: 70px solid #0a1628;
+        }
+
+        .pine-tree-4 .tree-branches::before {
+            border-left-width: 17px;
+            border-right-width: 17px;
+            border-bottom: 60px solid #0a1628;
+            top: -80px;
+            left: -17px;
+        }
+
+        .pine-tree-4 .tree-branches::after {
+            border-left-width: 13px;
+            border-right-width: 13px;
+            border-bottom: 45px solid #0a1628;
+            top: -115px;
+            left: -13px;
+        }
+
+        .pine-tree-4::before {
+            border-left-width: 19px;
+            border-right-width: 19px;
+            border-bottom: 50px solid #0a1628;
+            bottom: 70px;
+        }
+
+        .pine-tree-4::after {
+            border-left-width: 14px;
+            border-right-width: 14px;
+            border-bottom: 40px solid #0a1628;
+            bottom: 110px;
+        }
+
+        .pine-tree-6 .tree-branches {
+            border-left-width: 28px;
+            border-right-width: 28px;
+            border-bottom: 85px solid #0a1628;
+        }
+
+        .pine-tree-6 .tree-branches::before {
+            border-left-width: 24px;
+            border-right-width: 24px;
+            border-bottom: 75px solid #0a1628;
+            top: -95px;
+            left: -24px;
+        }
+
+        .pine-tree-6 .tree-branches::after {
+            border-left-width: 17px;
+            border-right-width: 17px;
+            border-bottom: 55px solid #0a1628;
+            top: -140px;
+            left: -17px;
+        }
+
+        .pine-tree-6::before {
+            border-left-width: 26px;
+            border-right-width: 26px;
+            border-bottom: 65px solid #0a1628;
+            bottom: 85px;
+        }
+
+        .pine-tree-6::after {
+            border-left-width: 19px;
+            border-right-width: 19px;
+            border-bottom: 50px solid #0a1628;
+            bottom: 140px;
+        }
+
+        /* Cottage */
+        .cottage {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 180px;
+        }
+
+        .cottage-base {
+            width: 50px;
+            height: 40px;
+            background: #0a1628;
+            position: relative;
+        }
+
+        .cottage-roof {
+            width: 0;
+            height: 0;
+            border-left: 30px solid transparent;
+            border-right: 30px solid transparent;
+            border-bottom: 25px solid #0a1628;
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .cottage-roof::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: -28px;
+            width: 56px;
+            height: 5px;
+            background: transparent;
+            border-radius: 2px;
+        }
+
+        .cottage-window {
+            width: 8px;
+            height: 8px;
+            background: rgba(255, 200, 100, 0.3);
+            position: absolute;
+            top: 15px;
+            left: 12px;
+        }
+
+        .cottage-door {
+            width: 12px;
+            height: 20px;
+            background: #050d18;
+            position: absolute;
+            bottom: 0;
+            right: 10px;
+        }
+
+        /* Chimney */
+        .chimney {
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background: #0a1628;
+            right: 8px;
+            bottom: 40px;
+        }
+
+        /* Smoke */
+        .smoke {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(200, 200, 200, 0.6);
+            border-radius: 50%;
+            bottom: 60px;
+            right: 10px;
+        }
+
+        .smoke:nth-child(1) {
+            animation: smoke-rise 3s ease-in-out infinite;
+            animation-delay: 0s;
+        }
+
+        .smoke:nth-child(2) {
+            animation: smoke-rise 3s ease-in-out infinite;
+            animation-delay: 1s;
+        }
+
+        .smoke:nth-child(3) {
+            animation: smoke-rise 3s ease-in-out infinite;
+            animation-delay: 2s;
+        }
+
+        @keyframes smoke-rise {
+            0% {
+                transform: translateY(0) translateX(0) scale(1);
+                opacity: 0.6;
+            }
+            50% {
+                transform: translateY(-20px) translateX(5px) scale(1.5);
+                opacity: 0.4;
+            }
+            100% {
+                transform: translateY(-40px) translateX(-3px) scale(2);
+                opacity: 0;
+            }
+        }
+
+        /* Floating background elements */
+        .floating-elements {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .floating-item {
+            position: absolute;
+            font-size: 2.5rem;
+            opacity: 0.4;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-20px) rotate(5deg);
+            }
+        }
+
+        .floating-item:nth-child(1) {
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .floating-item:nth-child(2) {
+            top: 10%;
+            right: 10%;
+            animation-delay: 1s;
+        }
+
+        .floating-item:nth-child(3) {
+            top: 25%;
+            left: 5%;
+            animation-delay: 2s;
+        }
+
+        .floating-item:nth-child(4) {
+            top: 25%;
+            right: 5%;
+            animation-delay: 3s;
+        }
+
+        .floating-item:nth-child(5) {
+            top: 40%;
+            left: 15%;
+            animation-delay: 4s;
+        }
+
+        .floating-item:nth-child(6) {
+            top: 40%;
+            right: 15%;
+            animation-delay: 5s;
+        }
+
+        .floating-item:nth-child(7) {
+            top: 55%;
+            left: 8%;
+            animation-delay: 1.5s;
+        }
+
+        .floating-item:nth-child(8) {
+            top: 55%;
+            right: 8%;
+            animation-delay: 3.5s;
+        }
+
+        .floating-item:nth-child(9) {
+            top: 70%;
+            left: 12%;
+            animation-delay: 2.5s;
+        }
+
+        .floating-item:nth-child(10) {
+            top: 70%;
+            right: 12%;
+            animation-delay: 4.5s;
+        }
+
+        .floating-item:nth-child(11) {
+            top: 85%;
+            left: 20%;
+            animation-delay: 1s;
+        }
+
+        .floating-item:nth-child(12) {
+            top: 85%;
+            right: 20%;
+            animation-delay: 3s;
+        }
+
+        .floating-item:nth-child(13) {
+            top: 15%;
+            left: 30%;
+            animation-delay: 2s;
+        }
+
+        .floating-item:nth-child(14) {
+            top: 15%;
+            right: 30%;
+            animation-delay: 4s;
+        }
+
+        .floating-item:nth-child(15) {
+            top: 60%;
+            left: 25%;
+            animation-delay: 0.5s;
+        }
+
+        /* Shooting stars */
+        .shooting-star {
+            position: fixed;
+            font-size: 1.5rem;
+            z-index: 1;
+            filter: drop-shadow(0 0 6px white);
+        }
+
+        .shooting-star::after {
+            content: '';
+            position: absolute;
+            width: 100px;
+            height: 2px;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0.8), transparent);
+            top: 50%;
+            right: 100%;
+            transform: translateY(-50%);
+        }
+
+        /* Left to right diagonal (top-left to bottom-right) */
+        .shooting-star.diagonal-lr {
+            animation: shootDiagonalLR 3s linear infinite;
+        }
+
+        @keyframes shootDiagonalLR {
+            0% {
+                transform: translate(-100px, -100px) rotate(-45deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translate(calc(100vw + 100px), calc(100vh + 100px)) rotate(-45deg);
+                opacity: 0;
+            }
+        }
+
+        /* Right to left diagonal (top-right to bottom-left) */
+        .shooting-star.diagonal-rl {
+            animation: shootDiagonalRL 3s linear infinite;
+        }
+
+        @keyframes shootDiagonalRL {
+            0% {
+                transform: translate(100px, -100px) rotate(45deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translate(calc(-100vw - 100px), calc(100vh + 100px)) rotate(45deg);
+                opacity: 0;
+            }
+        }
+
+        /* Bottom to top diagonal (bottom-left to top-right) */
+        .shooting-star.diagonal-bt {
+            animation: shootDiagonalBT 3s linear infinite;
+        }
+
+        @keyframes shootDiagonalBT {
+            0% {
+                transform: translate(-100px, 100px) rotate(135deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translate(calc(100vw + 100px), calc(-100vh - 100px)) rotate(135deg);
+                opacity: 0;
+            }
+        }
+
+        /* Individual star positioning */
+        .shooting-star:nth-child(1) {
+            top: 10%;
+            left: 0;
+            animation-duration: 2.5s;
+            animation-delay: 0s;
+        }
+
+        .shooting-star:nth-child(2) {
+            top: 30%;
+            left: 0;
+            animation-duration: 3s;
+            animation-delay: 3s;
+        }
+
+        .shooting-star:nth-child(3) {
+            top: 20%;
+            right: 0;
+            animation-duration: 2.8s;
+            animation-delay: 6s;
+        }
+
+        .shooting-star:nth-child(4) {
+            top: 50%;
+            left: 0;
+            animation-duration: 2.6s;
+            animation-delay: 1.5s;
+        }
+
+        .shooting-star:nth-child(5) {
+            top: 40%;
+            right: 0;
+            animation-duration: 3.2s;
+            animation-delay: 4.5s;
+        }
+
+        .shooting-star:nth-child(6) {
+            bottom: 30%;
+            left: 0;
+            animation-duration: 2.9s;
+            animation-delay: 7s;
+        }
+
+        .shooting-star:nth-child(7) {
+            top: 60%;
+            left: 0;
+            animation-duration: 2.7s;
+            animation-delay: 2s;
+        }
+
+        .shooting-star:nth-child(8) {
+            top: 15%;
+            right: 0;
+            animation-duration: 3.1s;
+            animation-delay: 5.5s;
+        }
+
+        /* Main container */
+        .container {
+            position: relative;
+            z-index: 10;
+            animation: slideIn 1s ease-out;
+        }
+
+        @keyframes slideIn {
+            0% {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Card */
+        .card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.95);
+            border: 4px solid #1a3a52;
+            border-radius: 40px;
+            padding: 4rem 3rem;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            box-shadow:
+                0 0 30px rgba(26, 58, 82, 0.4),
+                0 0 60px rgba(26, 58, 82, 0.2),
+                inset 0 2px 10px rgba(26, 58, 82, 0.1);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -12px;
+            left: 0;
+            right: 0;
+            height: 25px;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.95) 60%, rgba(255, 255, 255, 0.7) 80%, transparent 100%);
+            border-radius: 40px 40px 0 0;
+            filter: blur(4px);
+            z-index: 1;
+        }
+
+
+        /* Sparkles */
+        .sparkle {
+            position: absolute;
+            animation: twinkle 1.5s ease-in-out infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0.8) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2) rotate(180deg);
+            }
+        }
+
+        .sparkle:nth-child(1) {
+            top: 5%;
+            left: 25%;
+            font-size: 1.5rem;
+            animation-delay: 0s;
+        }
+
+        .sparkle:nth-child(2) {
+            top: 6%;
+            right: 28%;
+            font-size: 1.8rem;
+            animation-delay: 0.5s;
+        }
+
+        .sparkle:nth-child(3) {
+            bottom: 30%;
+            left: 25%;
+            font-size: 1.2rem;
+            animation-delay: 1s;
+        }
+
+        .sparkle:nth-child(4) {
+            bottom: 8%;
+            right: 28%;
+            font-size: 1.6rem;
+            animation-delay: 1.5s;
+        }
+
+        /* Bunny */
+        .bunny {
+            font-size: 5rem;
+            display: inline-block;
+            animation: bounce 2s ease-in-out infinite;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        /* Moon */
+        .moon {
+            position: fixed;
+            top: 50px;
+            right: 80px;
+            width: 100px;
+            height: 100px;
+            background: #f4f4f4;
+            border-radius: 50%;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.6),
+                        inset -10px -10px 20px rgba(0, 0, 0, 0.1);
+            z-index: 2;
+        }
+
+        .moon::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 15%;
+            width: 15px;
+            height: 15px;
+            background: rgba(200, 200, 200, 0.3);
+            border-radius: 50%;
+        }
+
+        .moon::after {
+            content: '';
+            position: absolute;
+            bottom: 25%;
+            right: 20%;
+            width: 20px;
+            height: 20px;
+            background: rgba(200, 200, 200, 0.2);
+            border-radius: 50%;
+        }
+
+        /* Typography */
+        h1 {
+            font-family: 'Chewy', cursive;
+            font-size: 3.5rem;
+            color: #1a3a52;
+            margin: 1rem 0 0.5rem;
+            animation: popIn 0.6s ease-out 0.3s both;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .subtitle {
+            font-family: 'Nunito', sans-serif;
+            font-size: 2rem;
+            color: #1a3a52;
+            letter-spacing: 2px;
+            font-weight: 400;
+            animation: popIn 0.6s ease-out 0.5s both;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .card {
+                padding: 3rem 2rem;
+                margin: 1rem;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .subtitle {
+                font-size: 1.5rem;
+                letter-spacing: 1px;
+            }
+
+            .bunny {
+                font-size: 4rem;
+            }
+
+            .floating-item {
+                font-size: 2rem;
+            }
+
+            .sparkle {
+                font-size: 1rem !important;
+            }
+
+            .moon {
+                width: 70px;
+                height: 70px;
+                top: 30px;
+                right: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Snowflakes -->
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+    <div class="snowflake">❄</div>
+
+    <!-- Moon -->
+    <div class="moon"></div>
+
+    <!-- Ground -->
+    <div class="ground"></div>
+
+    <!-- Silhouettes -->
+    <div class="silhouettes">
+        <!-- Hill -->
+        <div class="hill"></div>
+
+        <!-- Pine trees -->
+        <div class="pine-tree pine-tree-1">
+            <div class="tree-branches"></div>
+            <div class="tree-trunk"></div>
+        </div>
+        <div class="pine-tree pine-tree-2">
+            <div class="tree-branches"></div>
+            <div class="tree-trunk"></div>
+        </div>
+        <div class="pine-tree pine-tree-3">
+            <div class="tree-branches"></div>
+            <div class="tree-trunk"></div>
+        </div>
+        <div class="pine-tree pine-tree-4">
+            <div class="tree-branches"></div>
+            <div class="tree-trunk"></div>
+        </div>
+        <div class="pine-tree pine-tree-5">
+            <div class="tree-branches"></div>
+            <div class="tree-trunk"></div>
+        </div>
+        <div class="pine-tree pine-tree-6">
+            <div class="tree-branches"></div>
+            <div class="tree-trunk"></div>
+        </div>
+        <div class="pine-tree pine-tree-7">
+            <div class="tree-branches"></div>
+            <div class="tree-trunk"></div>
+        </div>
+        <div class="pine-tree pine-tree-8">
+            <div class="tree-branches"></div>
+            <div class="tree-trunk"></div>
+        </div>
+
+        <!-- Cottage -->
+        <div class="cottage">
+            <div class="chimney"></div>
+            <div class="smoke"></div>
+            <div class="smoke"></div>
+            <div class="smoke"></div>
+            <div class="cottage-roof"></div>
+            <div class="cottage-base">
+                <div class="cottage-window"></div>
+                <div class="cottage-door"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main container -->
+    <div class="container">
+        <div class="card">
+            <!-- Content -->
+            <h1>Hello, World!</h1>
+            <p class="subtitle">I'm Stephanie Gomez & I'm ready to vibe code.</p>
+        </div>
+    </div>
+</body>
+</html>
