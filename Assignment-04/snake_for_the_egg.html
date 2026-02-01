@@ -1,0 +1,1822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For the Egg - A Snake's Journey</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .pixel-font {
+            font-family: 'Press Start 2P', monospace;
+            image-rendering: pixelated;
+        }
+        
+        .pixel-button {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            padding: 12px 24px;
+            border: 4px solid #000;
+            background: #ffd700;
+            color: #000;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 5px 5px 0px #000;
+        }
+        
+        .pixel-button:hover {
+            background: #ffed4e;
+            transform: translate(2px, 2px);
+            box-shadow: 3px 3px 0px #000;
+        }
+        
+        .pixel-button:active {
+            transform: translate(5px, 5px);
+            box-shadow: 0px 0px 0px #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        const ForTheEgg = () => {
+            const canvasRef = useRef(null);
+            const [gameState, setGameState] = useState('title');
+            const [level, setLevel] = useState(1);
+            const [score, setScore] = useState(0);
+            const [itemsCollected, setItemsCollected] = useState(0);
+            const [itemsNeeded, setItemsNeeded] = useState(10);
+            const [savedProgress, setSavedProgress] = useState(null);
+            
+            const GRID_SIZE = 20;
+            const CANVAS_SIZE = 600;
+            const CELL_SIZE = CANVAS_SIZE / GRID_SIZE;
+            const BASE_SPEED = 200;
+            
+            const [snake, setSnake] = useState([{ x: 10, y: 10 }]);
+            const [direction, setDirection] = useState({ x: 1, y: 0 });
+            const [item, setItem] = useState({ x: 15, y: 15 });
+            const [obstacles, setObstacles] = useState([]);
+            const [gameOver, setGameOver] = useState(false);
+            const [gameSpeed, setGameSpeed] = useState(BASE_SPEED);
+            const [foxAppeared, setFoxAppeared] = useState(false);
+            const [foxAnimationFrame, setFoxAnimationFrame] = useState(0);
+            const [foxStoleEgg, setFoxStoleEgg] = useState(false);
+            const [showingPawPrints, setShowingPawPrints] = useState(false);
+            const [snakeReturning, setSnakeReturning] = useState(false);
+            const [returnAnimationFrame, setReturnAnimationFrame] = useState(0);
+            const [snakeLeaving, setSnakeLeaving] = useState(false);
+            const [leavingAnimationFrame, setLeavingAnimationFrame] = useState(0);
+            const [backgroundGradient, setBackgroundGradient] = useState('from-green-400 via-yellow-300 to-blue-400');
+            const [eggPosition] = useState({ x: 10, y: 10 });
+            const [snakeExpression, setSnakeExpression] = useState('neutral');
+            const [titleBounce, setTitleBounce] = useState(0);
+            const [enemyBounce, setEnemyBounce] = useState(0);
+            const [showInstructions, setShowInstructions] = useState(false);
+            const [showLevelSelect, setShowLevelSelect] = useState(false);
+            
+            const directionRef = useRef({ x: 1, y: 0 });
+            const speedRef = useRef(BASE_SPEED);
+
+            const levels = [
+                {
+                    id: 1,
+                    name: 'The Garden',
+                    bgColor: '#a8d5a8',
+                    snakeColor: '#d4c5a9',
+                    saddleColor: '#8b7355',
+                    itemColor: '#ffd700',
+                    itemType: 'sun',
+                    obstacleTypes: ['dog', 'cat', 'bird'],
+                    obstacleCount: 4,
+                    itemsNeeded: 5,
+                    description: 'Collect sunlight to warm your egg...'
+                },
+                {
+                    id: 2,
+                    name: 'The Burrow',
+                    bgColor: '#8b6f47',
+                    snakeColor: '#d4c5a9',
+                    saddleColor: '#8b7355',
+                    itemColor: '#9e9e9e',
+                    itemType: 'mouse',
+                    obstacleTypes: ['stone', 'mole', 'spider'],
+                    obstacleCount: 6,
+                    itemsNeeded: 10,
+                    description: 'Hunt for mice to feed yourself...'
+                },
+                {
+                    id: 3,
+                    name: 'The Sewer',
+                    bgColor: '#c0c0c0',
+                    snakeColor: '#d4c5a9',
+                    saddleColor: '#8b7355',
+                    itemColor: '#6b5033',
+                    itemType: 'pawprint',
+                    obstacleTypes: ['rat', 'crocodile', 'pipe'],
+                    obstacleCount: 7,
+                    itemsNeeded: 12,
+                    description: 'Follow the paw prints through the sewer...'
+                },
+                {
+                    id: 4,
+                    name: 'The Beach',
+                    bgColor: '#f4d898',
+                    snakeColor: '#d4c5a9',
+                    saddleColor: '#8b7355',
+                    itemColor: '#ff69b4',
+                    itemType: 'seashell',
+                    obstacleTypes: ['crab', 'beachball', 'seagull'],
+                    obstacleCount: 8,
+                    itemsNeeded: 14,
+                    description: 'Search the beach for her egg...'
+                }
+            ];
+
+            // Title bounce animation
+            useEffect(() => {
+                if (gameState === 'title') {
+                    const interval = setInterval(() => {
+                        setTitleBounce(prev => (prev + 1) % 60);
+                    }, 30);
+                    return () => clearInterval(interval);
+                }
+            }, [gameState]);
+            
+            // Enemy bounce animation
+            useEffect(() => {
+                if (gameState === 'playing') {
+                    const interval = setInterval(() => {
+                        setEnemyBounce(prev => (prev + 1) % 40);
+                    }, 50);
+                    return () => clearInterval(interval);
+                }
+            }, [gameState]);
+            
+            // Fox animation
+            useEffect(() => {
+                if (foxAppeared && foxAnimationFrame < 120) {
+                    const interval = setInterval(() => {
+                        setFoxAnimationFrame(prev => {
+                            const newFrame = prev + 1;
+                            if (newFrame === 60 && !foxStoleEgg) {
+                                setFoxStoleEgg(true);
+                            }
+                            return newFrame;
+                        });
+                    }, 50);
+                    return () => clearInterval(interval);
+                }
+            }, [foxAppeared, foxAnimationFrame, foxStoleEgg]);
+            
+            // Snake leaving animation
+            useEffect(() => {
+                if (snakeLeaving && leavingAnimationFrame < 40) {
+                    const interval = setInterval(() => {
+                        setLeavingAnimationFrame(prev => prev + 1);
+                    }, 50);
+                    return () => clearInterval(interval);
+                } else if (snakeLeaving && leavingAnimationFrame >= 40) {
+                    setGameState('levelComplete');
+                }
+            }, [snakeLeaving, leavingAnimationFrame]);
+            
+            // Snake returning animation
+            useEffect(() => {
+                if (snakeReturning && returnAnimationFrame < 60) {
+                    const interval = setInterval(() => {
+                        setReturnAnimationFrame(prev => {
+                            const newFrame = prev + 1;
+                            if (newFrame === 50) {
+                                setSnakeExpression('worried');
+                            }
+                            return newFrame;
+                        });
+                    }, 50);
+                    return () => clearInterval(interval);
+                } else if (snakeReturning && returnAnimationFrame >= 60) {
+                    setTimeout(() => {
+                        setShowingPawPrints(true);
+                    }, 1000);
+                }
+            }, [snakeReturning, returnAnimationFrame]);
+
+            // Generate obstacles
+            const generateObstacles = (levelData, currentSnake) => {
+                const obs = [];
+                const count = levelData.obstacleCount;
+                const types = levelData.obstacleTypes;
+                
+                for (let i = 0; i < count; i++) {
+                    let x, y;
+                    let valid = false;
+                    let attempts = 0;
+                    
+                    while (!valid && attempts < 100) {
+                        x = Math.floor(Math.random() * GRID_SIZE);
+                        y = Math.floor(Math.random() * GRID_SIZE);
+                        
+                        const farFromSnake = currentSnake.every(seg => 
+                            Math.abs(seg.x - x) + Math.abs(seg.y - y) > 3
+                        );
+                        const notOnEgg = level !== 2 || (Math.abs(eggPosition.x - x) + Math.abs(eggPosition.y - y) > 2);
+                        const notOverlapping = !obs.some(o => o.x === x && o.y === y);
+                        
+                        if (farFromSnake && notOnEgg && notOverlapping) {
+                            valid = true;
+                        }
+                        attempts++;
+                    }
+                    
+                    if (valid) {
+                        obs.push({ 
+                            x, 
+                            y, 
+                            type: types[Math.floor(Math.random() * types.length)]
+                        });
+                    }
+                }
+                
+                return obs;
+            };
+
+            // Generate item
+            const generateItem = (currentSnake, currentObstacles, avoidEgg = false) => {
+                let newItem;
+                let valid = false;
+                
+                while (!valid) {
+                    newItem = {
+                        x: Math.floor(Math.random() * GRID_SIZE),
+                        y: Math.floor(Math.random() * GRID_SIZE)
+                    };
+                    
+                    const notOnSnake = !currentSnake.some(seg => seg.x === newItem.x && seg.y === newItem.y);
+                    const notOnObstacle = !currentObstacles.some(obs => obs.x === newItem.x && obs.y === newItem.y);
+                    const notOnEgg = !avoidEgg || (Math.abs(eggPosition.x - newItem.x) + Math.abs(eggPosition.y - newItem.y) > 1);
+                    
+                    if (notOnSnake && notOnObstacle && notOnEgg) {
+                        valid = true;
+                    }
+                }
+                
+                return newItem;
+            };
+
+            // Start level
+            const startLevel = (levelNum, fromSave = false) => {
+                const levelData = levels[levelNum - 1];
+                const initialSnake = [{ x: 3, y: 10 }];
+                const newObstacles = generateObstacles(levelData, initialSnake);
+                const newItem = generateItem(initialSnake, newObstacles, levelNum === 2);
+                
+                setSnake(initialSnake);
+                setDirection({ x: 1, y: 0 });
+                directionRef.current = { x: 1, y: 0 };
+                setItem(newItem);
+                setObstacles(newObstacles);
+                setGameOver(false);
+                setItemsCollected(0);
+                setItemsNeeded(levelData.itemsNeeded);
+                setFoxAppeared(false);
+                setFoxAnimationFrame(0);
+                setFoxStoleEgg(false);
+                setSnakeReturning(false);
+                setReturnAnimationFrame(0);
+                setSnakeLeaving(false);
+                setLeavingAnimationFrame(0);
+                setShowingPawPrints(false);
+                setSnakeExpression('neutral');
+                
+                if (levelNum === 1) {
+                    setBackgroundGradient('from-pink-200 via-pink-100 to-blue-200');
+                } else if (levelNum === 2) {
+                    setBackgroundGradient('from-orange-300 via-yellow-200 to-amber-200');
+                } else if (levelNum === 3) {
+                    setBackgroundGradient('from-yellow-800 via-lime-900 to-yellow-900');
+                } else if (levelNum === 4) {
+                    setBackgroundGradient('from-yellow-300 via-sky-200 to-blue-300');
+                }
+                
+                setGameSpeed(BASE_SPEED);
+                speedRef.current = BASE_SPEED;
+                
+                if (!fromSave) {
+                    setScore(0);
+                }
+                
+                setShowInstructions(true);
+                setGameState('playing');
+            };
+
+            // Save/Load game
+            const saveGame = () => {
+                const saveData = { level, score, timestamp: new Date().toISOString() };
+                localStorage.setItem('forTheEggSave', JSON.stringify(saveData));
+                setSavedProgress(saveData);
+            };
+
+            const loadGame = () => {
+                const saved = localStorage.getItem('forTheEggSave');
+                if (saved) {
+                    const saveData = JSON.parse(saved);
+                    setSavedProgress(saveData);
+                    return saveData;
+                }
+                return null;
+            };
+
+            useEffect(() => {
+                const saved = loadGame();
+                if (saved) {
+                    // Clamp level to max in case of stale saves beyond current level count
+                    if (saved.level > levels.length) {
+                        saved.level = levels.length;
+                        localStorage.setItem('forTheEggSave', JSON.stringify(saved));
+                    }
+                    setSavedProgress(saved);
+                }
+            }, []);
+
+            // Auto-save progress when a level is completed
+            useEffect(() => {
+                if (gameState === 'levelComplete') {
+                    const nextLevel = Math.min(level + 1, levels.length);
+                    const saveData = {
+                        level: nextLevel,
+                        score,
+                        timestamp: new Date().toISOString()
+                    };
+                    localStorage.setItem('forTheEggSave', JSON.stringify(saveData));
+                    setSavedProgress(saveData);
+                }
+            }, [gameState]);
+
+            // Controls
+            useEffect(() => {
+                const handleKeyPress = (e) => {
+                    const key = e.key;
+                    
+                    if (gameState === 'playing' && !gameOver && !snakeLeaving && !showInstructions) {
+                        const currentDir = directionRef.current;
+                        
+                        if (key === 'ArrowUp' && currentDir.y === 0) {
+                            directionRef.current = { x: 0, y: -1 };
+                        } else if (key === 'ArrowDown' && currentDir.y === 0) {
+                            directionRef.current = { x: 0, y: 1 };
+                        } else if (key === 'ArrowLeft' && currentDir.x === 0) {
+                            directionRef.current = { x: -1, y: 0 };
+                        } else if (key === 'ArrowRight' && currentDir.x === 0) {
+                            directionRef.current = { x: 1, y: 0 };
+                        }
+                    }
+                };
+                
+                window.addEventListener('keydown', handleKeyPress);
+                return () => window.removeEventListener('keydown', handleKeyPress);
+            }, [gameState, gameOver, snakeLeaving, showInstructions]);
+
+            // Game loop
+            useEffect(() => {
+                if (gameState !== 'playing' || gameOver || snakeReturning || snakeLeaving || showInstructions) return;
+                
+                const gameLoop = setInterval(() => {
+                    setSnake(prevSnake => {
+                        const head = prevSnake[0];
+                        const dir = directionRef.current;
+                        const newHead = {
+                            x: head.x + dir.x,
+                            y: head.y + dir.y
+                        };
+                        
+                        if (newHead.x < 0 || newHead.x >= GRID_SIZE || newHead.y < 0 || newHead.y >= GRID_SIZE) {
+                            setSnakeExpression('dizzy');
+                            setGameOver(true);
+                            return prevSnake;
+                        }
+                        
+                        if (prevSnake.some(seg => seg.x === newHead.x && seg.y === newHead.y)) {
+                            setSnakeExpression('dizzy');
+                            setGameOver(true);
+                            return prevSnake;
+                        }
+                        
+                        if (obstacles.some(obs => obs.x === newHead.x && obs.y === newHead.y)) {
+                            setSnakeExpression('dizzy');
+                            setGameOver(true);
+                            return prevSnake;
+                        }
+                        
+                        let newSnake = [newHead, ...prevSnake];
+                        
+                        if (newHead.x === item.x && newHead.y === item.y) {
+                            const newCount = itemsCollected + 1;
+                            setItemsCollected(newCount);
+                            setScore(prev => prev + 10);
+                            
+                            if (level === 2 && newCount === 5 && !foxAppeared) {
+                                setFoxAppeared(true);
+                            }
+                            
+                            if (newCount >= itemsNeeded) {
+                                if (level === 2) {
+                                    setSnakeLeaving(true);
+                                } else {
+                                    setGameState('levelComplete');
+                                }
+                                return prevSnake;
+                            }
+                            
+                            setItem(generateItem(newSnake, obstacles, level === 2));
+                        } else {
+                            newSnake.pop();
+                        }
+                        
+                        setDirection(directionRef.current);
+                        return newSnake;
+                    });
+                }, speedRef.current);
+                
+                return () => clearInterval(gameLoop);
+            }, [gameState, gameOver, item, obstacles, itemsCollected, itemsNeeded, level, foxAppeared, snakeReturning, snakeLeaving, showInstructions]);
+
+            // Drawing - This is a massive useEffect, I'll include the full drawing code
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                const currentLevel = levels[level - 1];
+                
+                ctx.fillStyle = currentLevel.bgColor;
+                ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+                
+                if (gameState === 'title') {
+                    // Title screen drawing code (keeping it concise for HTML file size)
+                    ctx.fillStyle = '#6b8e6b';
+                    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+                    
+                    const centerX = CANVAS_SIZE / 2;
+                    const centerY = CANVAS_SIZE / 2 + 50;
+                    
+                    // Nest
+                    ctx.fillStyle = '#8b7355';
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, centerY + 30, 100, 40, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Egg
+                    ctx.fillStyle = '#f5f5f5';
+                    ctx.strokeStyle = '#daa520';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.ellipse(centerX, centerY, 45, 30, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // Egg spots
+                    ctx.fillStyle = '#daa520';
+                    [[0, -8, 5], [15, 3, 6], [-12, 5, 4]].forEach(([ox, oy, r]) => {
+                        ctx.beginPath();
+                        ctx.arc(centerX + ox, centerY + oy, r, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    
+                    // Snake coil
+                    const segments = 20;
+                    const radius = 80;
+                    const coilPoints = [];
+                    
+                    for (let i = 0; i < segments; i++) {
+                        const angle = (i / segments) * Math.PI * 2;
+                        const x = centerX + Math.cos(angle) * radius;
+                        const y = centerY + Math.sin(angle) * radius * 0.6;
+                        coilPoints.push({ x, y });
+                    }
+                    
+                    const bodyWidth = 24;
+                    ctx.strokeStyle = '#d4c5a9';
+                    ctx.lineWidth = bodyWidth;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    
+                    ctx.beginPath();
+                    coilPoints.forEach((point, i) => {
+                        if (i === 0) ctx.moveTo(point.x, point.y);
+                        else ctx.lineTo(point.x, point.y);
+                    });
+                    ctx.stroke();
+                    
+                    // Draw brown saddle pattern
+                    ctx.fillStyle = '#8b7355';
+                    for (let i = 0; i < coilPoints.length; i += 3) {
+                        const point = coilPoints[i];
+                        ctx.beginPath();
+                        ctx.ellipse(point.x, point.y, 8, 10, Math.random() * 0.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    const headX = centerX + Math.cos(0) * radius;
+                    const headY = centerY;
+                    ctx.fillStyle = '#d4c5a9';
+                    ctx.beginPath();
+                    ctx.arc(headX, headY, bodyWidth / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Saddle markings on head
+                    ctx.fillStyle = '#8b7355';
+                    ctx.beginPath();
+                    ctx.ellipse(headX - 4, headY - 3, 4, 5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(headX + 4, headY - 3, 4, 5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(headX - 6, headY - 4, 4, 0, Math.PI, true);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(headX + 6, headY - 4, 4, 0, Math.PI, true);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 20px monospace';
+                    ctx.fillText('Z', headX + 25, headY - 20);
+                    ctx.font = 'bold 16px monospace';
+                    ctx.fillText('z', headX + 35, headY - 30);
+                    ctx.font = 'bold 12px monospace';
+                    ctx.fillText('z', headX + 42, headY - 38);
+                    
+                    return;
+                }
+                
+                // Grid
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= GRID_SIZE; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * CELL_SIZE, 0);
+                    ctx.lineTo(i * CELL_SIZE, CANVAS_SIZE);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * CELL_SIZE);
+                    ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE);
+                    ctx.stroke();
+                }
+                
+                // Egg in nest (level 2, before fox)
+                if (level === 2 && !foxAppeared) {
+                    const eggX = eggPosition.x * CELL_SIZE + CELL_SIZE / 2;
+                    const eggY = eggPosition.y * CELL_SIZE + CELL_SIZE / 2;
+                    
+                    ctx.fillStyle = '#654321';
+                    ctx.beginPath();
+                    ctx.ellipse(eggX, eggY + 8, CELL_SIZE * 1.2, CELL_SIZE * 0.8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#f5f5f5';
+                    ctx.strokeStyle = '#daa520';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.ellipse(eggX, eggY, CELL_SIZE * 0.8, CELL_SIZE * 0.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                
+                // Fox animation (this is long, keeping core logic)
+                if (level === 2 && foxAppeared && foxAnimationFrame < 120) {
+                    const eggX = eggPosition.x * CELL_SIZE + CELL_SIZE / 2;
+                    const eggY = eggPosition.y * CELL_SIZE + CELL_SIZE / 2;
+                    
+                    let foxCurrentX, foxY;
+                    
+                    if (foxAnimationFrame < 60) {
+                        const foxProgress = Math.min(foxAnimationFrame / 30, 1);
+                        foxCurrentX = (CANVAS_SIZE + 50) + (eggX - (CANVAS_SIZE + 50)) * foxProgress;
+                        foxY = eggY;
+                    } else {
+                        const leaveProgress = (foxAnimationFrame - 60) / 60;
+                        foxCurrentX = eggX + leaveProgress * (CANVAS_SIZE + 50 - eggX);
+                        foxY = eggY;
+                    }
+                    
+                    const facingLeft = foxAnimationFrame < 60;
+                    const bodyOffsetX = facingLeft ? 10 : -10;
+                    const headOffsetX = facingLeft ? -10 : 10;
+                    
+                    // Fox body
+                    ctx.fillStyle = '#d2691e';
+                    ctx.beginPath();
+                    ctx.ellipse(foxCurrentX + bodyOffsetX, foxY, 20, 14, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Fox head
+                    ctx.fillStyle = '#ff8c00';
+                    ctx.beginPath();
+                    ctx.arc(foxCurrentX + headOffsetX, foxY - 2, 16, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Snout
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.ellipse(foxCurrentX + headOffsetX + (facingLeft ? -8 : 8), foxY + 4, 6, 5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Nose
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.arc(foxCurrentX + headOffsetX + (facingLeft ? -12 : 12), foxY + 2, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Ears and other fox details...
+                    // (Keeping HTML file manageable - full code is very long)
+                    
+                    // Eyes
+                    ctx.fillStyle = '#000000';
+                    if (facingLeft) {
+                        ctx.fillRect(foxCurrentX + headOffsetX - 6, foxY - 8, 2, 3);
+                        ctx.fillRect(foxCurrentX + headOffsetX + 2, foxY - 8, 2, 3);
+                    } else {
+                        ctx.fillRect(foxCurrentX + headOffsetX - 2, foxY - 8, 2, 3);
+                        ctx.fillRect(foxCurrentX + headOffsetX + 6, foxY - 8, 2, 3);
+                    }
+                    
+                    // Egg in mouth
+                    if (foxAnimationFrame >= 30) {
+                        ctx.fillStyle = '#f5f5f5';
+                        ctx.strokeStyle = '#daa520';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.ellipse(foxCurrentX + headOffsetX + (facingLeft ? -10 : 10), foxY + 10, 8, 5, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                }
+                
+                // Draw obstacles
+                const bounceOffset = Math.sin(enemyBounce / 6) * 3;
+                // Don't draw obstacles when snake is returning to check nest
+                if (!snakeReturning) {
+                    obstacles.forEach(obs => {
+                    const x = obs.x * CELL_SIZE + CELL_SIZE / 2;
+                    const y = obs.y * CELL_SIZE + CELL_SIZE / 2 + bounceOffset;
+                    const size = CELL_SIZE * 0.7;
+                    
+                    // Drawing different obstacle types
+                    // (simplified for HTML - full pixel art code is extensive)
+                    
+                    if (obs.type === 'dog') {
+                        ctx.fillStyle = '#8b4513';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(x - 7, y - 5, 3, 4);
+                        ctx.fillRect(x + 4, y - 5, 3, 4);
+                    } else if (obs.type === 'cat') {
+                        ctx.fillStyle = '#ff8c69';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#00ff00';
+                        ctx.fillRect(x - 7, y - 4, 3, 5);
+                        ctx.fillRect(x + 4, y - 4, 3, 5);
+                    } else if (obs.type === 'bird') {
+                        ctx.fillStyle = '#4169e1';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (obs.type === 'stone') {
+                        ctx.fillStyle = '#696969';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (obs.type === 'mole') {
+                        ctx.fillStyle = '#654321';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (obs.type === 'spider') {
+                        ctx.fillStyle = '#000000';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size / 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (obs.type === 'rat') {
+                        // Big rat body
+                        ctx.fillStyle = '#3b2a1a';
+                        ctx.beginPath();
+                        ctx.ellipse(x, y, size * 0.55, size * 0.4, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Head
+                        ctx.fillStyle = '#4a3728';
+                        ctx.beginPath();
+                        ctx.ellipse(x + size * 0.4, y - size * 0.05, size * 0.28, size * 0.24, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Ears
+                        ctx.fillStyle = '#3b2a1a';
+                        ctx.beginPath();
+                        ctx.ellipse(x + size * 0.25, y - size * 0.28, size * 0.1, size * 0.13, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#c47a8a';
+                        ctx.beginPath();
+                        ctx.ellipse(x + size * 0.25, y - size * 0.28, size * 0.06, size * 0.08, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#3b2a1a';
+                        ctx.beginPath();
+                        ctx.ellipse(x + size * 0.42, y - size * 0.25, size * 0.1, size * 0.13, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#c47a8a';
+                        ctx.beginPath();
+                        ctx.ellipse(x + size * 0.42, y - size * 0.25, size * 0.06, size * 0.08, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Red angry eyes
+                        ctx.fillStyle = '#cc0000';
+                        ctx.fillRect(x + size * 0.28, y - size * 0.08, 4, 3);
+                        ctx.fillRect(x + size * 0.42, y - size * 0.08, 4, 3);
+                        // Nose
+                        ctx.fillStyle = '#ff6688';
+                        ctx.beginPath();
+                        ctx.ellipse(x + size * 0.6, y, 3, 2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Whiskers
+                        ctx.strokeStyle = '#888888';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath(); ctx.moveTo(x + size * 0.55, y - 2); ctx.lineTo(x + size * 0.8, y - 6); ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(x + size * 0.55, y); ctx.lineTo(x + size * 0.82, y); ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(x + size * 0.55, y + 2); ctx.lineTo(x + size * 0.8, y + 5); ctx.stroke();
+                        // Curling tail
+                        ctx.strokeStyle = '#3b2a1a';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(x - size * 0.5, y);
+                        ctx.quadraticCurveTo(x - size * 0.7, y - size * 0.5, x - size * 0.3, y - size * 0.6);
+                        ctx.stroke();
+                        // Legs
+                        ctx.fillStyle = '#3b2a1a';
+                        ctx.fillRect(x - size * 0.3, y + size * 0.3, size * 0.12, size * 0.2);
+                        ctx.fillRect(x + size * 0.15, y + size * 0.3, size * 0.12, size * 0.2);
+                    } else if (obs.type === 'crocodile') {
+                        // Crocodile body
+                        ctx.fillStyle = '#2d4a1e';
+                        ctx.beginPath();
+                        ctx.ellipse(x, y, size * 0.6, size * 0.3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Snout
+                        ctx.fillStyle = '#3a5c28';
+                        ctx.beginPath();
+                        ctx.moveTo(x + size * 0.5, y - size * 0.08);
+                        ctx.lineTo(x + size * 0.95, y);
+                        ctx.lineTo(x + size * 0.5, y + size * 0.08);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Top teeth
+                        ctx.fillStyle = '#ffffff';
+                        for (let i = 0; i < 4; i++) {
+                            const tx = x + size * 0.55 + i * size * 0.1;
+                            ctx.beginPath();
+                            ctx.moveTo(tx, y - size * 0.06);
+                            ctx.lineTo(tx + size * 0.04, y - size * 0.14);
+                            ctx.lineTo(tx + size * 0.08, y - size * 0.06);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                        // Bottom teeth
+                        for (let i = 0; i < 3; i++) {
+                            const tx = x + size * 0.6 + i * size * 0.1;
+                            ctx.beginPath();
+                            ctx.moveTo(tx, y + size * 0.06);
+                            ctx.lineTo(tx + size * 0.04, y + size * 0.14);
+                            ctx.lineTo(tx + size * 0.08, y + size * 0.06);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                        // Yellow slit eyes
+                        ctx.fillStyle = '#ffdd00';
+                        ctx.beginPath();
+                        ctx.ellipse(x + size * 0.3, y - size * 0.2, 5, 4, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(x - size * 0.1, y - size * 0.2, 5, 4, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(x + size * 0.3 - 1, y - size * 0.2 - 3, 2, 6);
+                        ctx.fillRect(x - size * 0.1 - 1, y - size * 0.2 - 3, 2, 6);
+                        // Tail
+                        ctx.fillStyle = '#2d4a1e';
+                        ctx.beginPath();
+                        ctx.moveTo(x - size * 0.55, y - size * 0.05);
+                        ctx.lineTo(x - size * 0.95, y - size * 0.15);
+                        ctx.lineTo(x - size * 0.55, y + size * 0.05);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Legs
+                        ctx.beginPath();
+                        ctx.ellipse(x - size * 0.3, y + size * 0.28, size * 0.15, size * 0.08, 0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(x + size * 0.2, y + size * 0.28, size * 0.15, size * 0.08, -0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (obs.type === 'pipe') {
+                        // Outer pipe ring
+                        ctx.fillStyle = '#5a5a5a';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.5, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Inner ring
+                        ctx.fillStyle = '#3d3d3d';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.4, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Dark opening
+                        ctx.fillStyle = '#1a1a1a';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Rim highlight
+                        ctx.strokeStyle = '#777777';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.5, Math.PI * 1.1, Math.PI * 1.9);
+                        ctx.stroke();
+                        // Dripping water
+                        ctx.fillStyle = '#5b8fa8';
+                        ctx.beginPath();
+                        ctx.ellipse(x - 4, y + size * 0.55, 2, 4, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(x + 3, y + size * 0.6, 1.5, 3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Rust spots
+                        ctx.fillStyle = '#8b4513';
+                        ctx.beginPath();
+                        ctx.arc(x - size * 0.2, y - size * 0.15, 2.5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(x + size * 0.25, y + size * 0.1, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (obs.type === 'crab') {
+                        // Crab body
+                        ctx.fillStyle = '#e63946';
+                        ctx.beginPath();
+                        ctx.ellipse(x, y + 2, size * 0.35, size * 0.25, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Shell
+                        ctx.fillStyle = '#c1121f';
+                        ctx.beginPath();
+                        ctx.ellipse(x, y - 2, size * 0.3, size * 0.2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Left claw
+                        ctx.fillStyle = '#e63946';
+                        ctx.beginPath();
+                        ctx.ellipse(x - size * 0.4, y - size * 0.1, size * 0.15, size * 0.08, -0.4, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(x - size * 0.52, y - size * 0.18, size * 0.1, size * 0.06, -0.6, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Right claw
+                        ctx.beginPath();
+                        ctx.ellipse(x + size * 0.4, y - size * 0.1, size * 0.15, size * 0.08, 0.4, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(x + size * 0.52, y - size * 0.18, size * 0.1, size * 0.06, 0.6, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Eyes
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(x - 6, y - size * 0.3, 2.5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(x + 6, y - size * 0.3, 2.5, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Legs
+                        ctx.strokeStyle = '#e63946';
+                        ctx.lineWidth = 2;
+                        for (let i = 0; i < 3; i++) {
+                            const legY = y + size * 0.05 + i * 4;
+                            ctx.beginPath();
+                            ctx.moveTo(x - size * 0.28, legY);
+                            ctx.lineTo(x - size * 0.45, legY + 6);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.moveTo(x + size * 0.28, legY);
+                            ctx.lineTo(x + size * 0.45, legY + 6);
+                            ctx.stroke();
+                        }
+                    } else if (obs.type === 'beachball') {
+                        // Beach ball base
+                        ctx.fillStyle = '#ff0000';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.45, 0, Math.PI * 2);
+                        ctx.fill();
+                        // White panels
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.45, -Math.PI * 0.15, Math.PI * 0.15);
+                        ctx.lineTo(x, y);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.45, Math.PI - 0.15, Math.PI + 0.15);
+                        ctx.lineTo(x, y);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Blue panels
+                        ctx.fillStyle = '#1e90ff';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.45, Math.PI * 0.33, Math.PI * 0.67);
+                        ctx.lineTo(x, y);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.45, Math.PI * 1.33, Math.PI * 1.67);
+                        ctx.lineTo(x, y);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Yellow panels
+                        ctx.fillStyle = '#ffd700';
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.45, Math.PI * 0.67, Math.PI * 1.0);
+                        ctx.lineTo(x, y);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.45, Math.PI * 0.15, Math.PI * 0.33);
+                        ctx.lineTo(x, y);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Outline
+                        ctx.strokeStyle = '#aaa';
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.arc(x, y, size * 0.45, 0, Math.PI * 2);
+                        ctx.stroke();
+                    } else if (obs.type === 'seagull') {
+                        // Body
+                        ctx.fillStyle = '#f0f0f0';
+                        ctx.beginPath();
+                        ctx.ellipse(x, y + 2, size * 0.3, size * 0.18, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Head
+                        ctx.fillStyle = '#e8e8e8';
+                        ctx.beginPath();
+                        ctx.arc(x + size * 0.28, y - 2, size * 0.16, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Eye
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(x + size * 0.33, y - 4, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Beak
+                        ctx.fillStyle = '#ff8c00';
+                        ctx.beginPath();
+                        ctx.moveTo(x + size * 0.42, y - 2);
+                        ctx.lineTo(x + size * 0.56, y - 1);
+                        ctx.lineTo(x + size * 0.42, y + 1);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Red beak tip
+                        ctx.fillStyle = '#cc0000';
+                        ctx.beginPath();
+                        ctx.moveTo(x + size * 0.5, y - 0.5);
+                        ctx.lineTo(x + size * 0.56, y - 1);
+                        ctx.lineTo(x + size * 0.5, y + 0.5);
+                        ctx.closePath();
+                        ctx.fill();
+                        // Wing
+                        ctx.fillStyle = '#808080';
+                        ctx.beginPath();
+                        ctx.ellipse(x - size * 0.05, y + 1, size * 0.22, size * 0.1, -0.2, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Wing tip
+                        ctx.fillStyle = '#505050';
+                        ctx.beginPath();
+                        ctx.ellipse(x - size * 0.2, y + 2, size * 0.08, size * 0.06, -0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Legs
+                        ctx.strokeStyle = '#ff8c00';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(x + 2, y + size * 0.2);
+                        ctx.lineTo(x, y + size * 0.38);
+                        ctx.moveTo(x + 2, y + size * 0.2);
+                        ctx.lineTo(x + 6, y + size * 0.38);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(x - 4, y + size * 0.2);
+                        ctx.lineTo(x - 6, y + size * 0.38);
+                        ctx.moveTo(x - 4, y + size * 0.2);
+                        ctx.lineTo(x - 10, y + size * 0.38);
+                        ctx.stroke();
+                    }
+                });
+                }
+                
+                // Draw item (not during return animation)
+                if (!snakeReturning) {
+                    const itemX = item.x * CELL_SIZE + CELL_SIZE / 2;
+                    const itemY = item.y * CELL_SIZE + CELL_SIZE / 2;
+                    const itemSize = CELL_SIZE * 0.6;
+                    
+                    if (currentLevel.itemType === 'sun') {
+                        ctx.fillStyle = currentLevel.itemColor;
+                        ctx.beginPath();
+                        ctx.arc(itemX, itemY, itemSize / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (currentLevel.itemType === 'mouse') {
+                        ctx.fillStyle = currentLevel.itemColor;
+                        ctx.beginPath();
+                        ctx.arc(itemX, itemY, itemSize / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (currentLevel.itemType === 'pawprint') {
+                        // Fox paw print item
+                        ctx.fillStyle = '#6b5033';
+                        // Main pad
+                        ctx.beginPath();
+                        ctx.ellipse(itemX, itemY + 2, 6, 7, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Four toes
+                        for (let i = 0; i < 4; i++) {
+                            const angle = (i / 4) * Math.PI - Math.PI / 2;
+                            const toeX = itemX + Math.cos(angle) * 9;
+                            const toeY = itemY - 7 + Math.sin(angle) * 4;
+                            ctx.beginPath();
+                            ctx.arc(toeX, toeY, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    } else if (currentLevel.itemType === 'seashell') {
+                        // Pink sea shell
+                        ctx.fillStyle = '#ff69b4';
+                        ctx.beginPath();
+                        ctx.ellipse(itemX, itemY + 1, 8, 6, 0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Shell ridges
+                        ctx.strokeStyle = '#e91e8c';
+                        ctx.lineWidth = 1;
+                        for (let i = -2; i <= 2; i++) {
+                            ctx.beginPath();
+                            ctx.ellipse(itemX + i * 3, itemY + 1, 2, 5, 0.3, 0, Math.PI * 2);
+                            ctx.stroke();
+                        }
+                        // Highlight
+                        ctx.fillStyle = '#ffb6d9';
+                        ctx.beginPath();
+                        ctx.ellipse(itemX - 2, itemY - 1, 3, 2, 0.2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                
+                // Draw snake
+                if (snake.length > 0 && !snakeReturning) {
+                    const bodyWidth = CELL_SIZE - 4;
+                    let displaySnake = [...snake];
+                    let displayDirection = { ...direction };
+                    
+                    if (snakeLeaving) {
+                        displayDirection = { x: 0, y: 1 };
+                        const offset = leavingAnimationFrame * 0.5;
+                        displaySnake = snake.map(segment => ({
+                            x: segment.x,
+                            y: segment.y + offset
+                        }));
+                    }
+                    
+                    ctx.fillStyle = currentLevel.snakeColor;
+                    ctx.strokeStyle = currentLevel.snakeColor;
+                    ctx.lineWidth = bodyWidth;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    
+                    ctx.beginPath();
+                    displaySnake.forEach((segment, index) => {
+                        const x = segment.x * CELL_SIZE + CELL_SIZE / 2;
+                        const y = segment.y * CELL_SIZE + CELL_SIZE / 2;
+                        if (index === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    });
+                    ctx.stroke();
+                    
+                    // Draw brown saddle pattern
+                    ctx.fillStyle = currentLevel.saddleColor;
+                    displaySnake.forEach((segment, index) => {
+                        if (index % 2 === 0 && index > 0) {
+                            const x = segment.x * CELL_SIZE + CELL_SIZE / 2;
+                            const y = segment.y * CELL_SIZE + CELL_SIZE / 2;
+                            ctx.beginPath();
+                            ctx.ellipse(x, y, 8, 10, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    });
+                    
+                    const head = displaySnake[0];
+                    const headX = head.x * CELL_SIZE + CELL_SIZE / 2;
+                    const headY = head.y * CELL_SIZE + CELL_SIZE / 2;
+                    
+                    ctx.fillStyle = currentLevel.snakeColor;
+                    ctx.beginPath();
+                    ctx.arc(headX, headY, bodyWidth / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Saddle markings on head
+                    ctx.fillStyle = currentLevel.saddleColor;
+                    ctx.beginPath();
+                    ctx.ellipse(headX - 4, headY - 3, 3, 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(headX + 4, headY - 3, 3, 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Eyes based on direction
+                    ctx.fillStyle = '#ffffff';
+                    let eye1X, eye1Y, eye2X, eye2Y;
+                    
+                    if (displayDirection.x === 1) {
+                        eye1X = headX + 6; eye1Y = headY - 5;
+                        eye2X = headX + 6; eye2Y = headY + 5;
+                    } else if (displayDirection.x === -1) {
+                        eye1X = headX - 6; eye1Y = headY - 5;
+                        eye2X = headX - 6; eye2Y = headY + 5;
+                    } else if (displayDirection.y === -1) {
+                        eye1X = headX - 5; eye1Y = headY - 6;
+                        eye2X = headX + 5; eye2Y = headY - 6;
+                    } else {
+                        eye1X = headX - 5; eye1Y = headY + 6;
+                        eye2X = headX + 5; eye2Y = headY + 6;
+                    }
+                    
+                    if (snakeExpression !== 'dizzy') {
+                        ctx.beginPath();
+                        ctx.arc(eye1X, eye1Y, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(eye2X, eye2Y, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = '#000000';
+                        ctx.beginPath();
+                        ctx.arc(eye1X, eye1Y, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(eye2X, eye2Y, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                
+                // Draw snake returning to nest (level 2)
+                if (level === 2 && snakeReturning) {
+                    const eggX = eggPosition.x * CELL_SIZE + CELL_SIZE / 2;
+                    const eggY = eggPosition.y * CELL_SIZE + CELL_SIZE / 2;
+                    
+                    const returnProgress = Math.min(returnAnimationFrame / 50, 1);
+                    const startY = CANVAS_SIZE + 50;
+                    const endY = eggY + CELL_SIZE * 2;
+                    const snakeHeadY = startY + (endY - startY) * returnProgress;
+                    const snakeHeadX = eggX;
+                    
+                    const bodyWidth = CELL_SIZE - 4;
+                    const bodyLength = snake.length;
+                    
+                    // Create body segments trailing down
+                    const returnBodySegments = [];
+                    for (let i = 0; i < bodyLength; i++) {
+                        returnBodySegments.push({
+                            x: snakeHeadX,
+                            y: snakeHeadY + (i * (CELL_SIZE / 2))
+                        });
+                    }
+                    
+                    // Draw body
+                    ctx.strokeStyle = currentLevel.snakeColor;
+                    ctx.lineWidth = bodyWidth;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    
+                    ctx.beginPath();
+                    returnBodySegments.forEach((segment, index) => {
+                        if (index === 0) ctx.moveTo(segment.x, segment.y);
+                        else ctx.lineTo(segment.x, segment.y);
+                    });
+                    ctx.stroke();
+                    
+                    // Draw saddle pattern
+                    ctx.fillStyle = currentLevel.saddleColor;
+                    returnBodySegments.forEach((segment, index) => {
+                        if (index % 2 === 0 && index > 0) {
+                            ctx.beginPath();
+                            ctx.ellipse(segment.x, segment.y, 8, 10, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    });
+                    
+                    // Draw head
+                    ctx.fillStyle = currentLevel.snakeColor;
+                    ctx.beginPath();
+                    ctx.arc(snakeHeadX, snakeHeadY, bodyWidth / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Saddle markings on head
+                    ctx.fillStyle = currentLevel.saddleColor;
+                    ctx.beginPath();
+                    ctx.ellipse(snakeHeadX - 4, snakeHeadY - 3, 3, 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(snakeHeadX + 4, snakeHeadY - 3, 3, 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Eyes facing up
+                    const eyeOffsetY = -6;
+                    ctx.fillStyle = '#ffffff';
+                    
+                    if (returnProgress >= 0.95) {
+                        // Worried expression
+                        ctx.beginPath();
+                        ctx.arc(snakeHeadX - 5, snakeHeadY + eyeOffsetY, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(snakeHeadX + 5, snakeHeadY + eyeOffsetY, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = '#000000';
+                        ctx.beginPath();
+                        ctx.arc(snakeHeadX - 5, snakeHeadY + eyeOffsetY, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(snakeHeadX + 5, snakeHeadY + eyeOffsetY, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Worried eyebrows
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(snakeHeadX - 10, snakeHeadY + eyeOffsetY - 7);
+                        ctx.lineTo(snakeHeadX, snakeHeadY + eyeOffsetY - 5);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(snakeHeadX, snakeHeadY + eyeOffsetY - 5);
+                        ctx.lineTo(snakeHeadX + 10, snakeHeadY + eyeOffsetY - 7);
+                        ctx.stroke();
+                    } else {
+                        // Normal eyes
+                        ctx.beginPath();
+                        ctx.arc(snakeHeadX - 5, snakeHeadY + eyeOffsetY, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(snakeHeadX + 5, snakeHeadY + eyeOffsetY, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = '#000000';
+                        ctx.beginPath();
+                        ctx.arc(snakeHeadX - 5, snakeHeadY + eyeOffsetY, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(snakeHeadX + 5, snakeHeadY + eyeOffsetY, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    // Draw empty nest
+                    ctx.fillStyle = '#654321';
+                    ctx.beginPath();
+                    ctx.ellipse(eggX, eggY + 8, CELL_SIZE * 1.2, CELL_SIZE * 0.8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Paw prints scene
+                if (showingPawPrints) {
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+                    
+                    ctx.fillStyle = '#8b6f47';
+                    ctx.fillRect(0, CANVAS_SIZE / 2, CANVAS_SIZE, CANVAS_SIZE / 2);
+                    
+                    const pawPrints = [
+                        { x: 100, y: 350 }, { x: 160, y: 340 }, { x: 220, y: 330 },
+                        { x: 280, y: 320 }, { x: 340, y: 310 }, { x: 400, y: 300 },
+                        { x: 460, y: 290 }
+                    ];
+                    
+                    ctx.fillStyle = '#6b5033';
+                    pawPrints.forEach(paw => {
+                        ctx.beginPath();
+                        ctx.ellipse(paw.x, paw.y, 12, 15, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.beginPath();
+                    ctx.ellipse(520, 280, 50, 40, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Cutscene 3 - beach with paw prints leading to a boat
+                if (gameState === 'cutscene3') {
+                    // Sky
+                    ctx.fillStyle = '#87CEEB';
+                    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+                    // Sun
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(480, 70, 40, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(480, 70, 55, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Ocean
+                    ctx.fillStyle = '#1e90ff';
+                    ctx.fillRect(0, 220, CANVAS_SIZE, 80);
+                    ctx.fillStyle = '#3aabe6';
+                    ctx.fillRect(0, 240, CANVAS_SIZE, 20);
+                    ctx.fillStyle = '#1565c0';
+                    ctx.fillRect(0, 300, CANVAS_SIZE, CANVAS_SIZE - 300);
+
+                    // Sand beach
+                    ctx.fillStyle = '#f4d898';
+                    ctx.fillRect(0, 260, CANVAS_SIZE, 60);
+                    ctx.fillStyle = '#d4b76a';
+                    ctx.fillRect(0, 255, CANVAS_SIZE, 12);
+
+                    // Paw prints across the sand
+                    const beachPaws = [
+                        { x: 60, y: 340 }, { x: 110, y: 330 }, { x: 160, y: 318 },
+                        { x: 210, y: 306 }, { x: 255, y: 294 }, { x: 295, y: 282 },
+                        { x: 330, y: 272 }
+                    ];
+                    beachPaws.forEach(paw => {
+                        ctx.fillStyle = '#c49a5a';
+                        ctx.beginPath();
+                        ctx.ellipse(paw.x, paw.y, 8, 10, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        for (let i = 0; i < 4; i++) {
+                            const angle = (i / 4) * Math.PI - Math.PI / 2;
+                            const toeX = paw.x + Math.cos(angle) * 12;
+                            const toeY = paw.y - 10 + Math.sin(angle) * 5;
+                            ctx.beginPath();
+                            ctx.arc(toeX, toeY, 3.5, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    });
+
+                    // Boat hull
+                    ctx.fillStyle = '#8B4513';
+                    ctx.beginPath();
+                    ctx.moveTo(310, 250);
+                    ctx.lineTo(290, 275);
+                    ctx.lineTo(430, 275);
+                    ctx.lineTo(410, 250);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Hull planks
+                    ctx.strokeStyle = '#6b3410';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(315, 258);
+                    ctx.lineTo(405, 258);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(312, 265);
+                    ctx.lineTo(408, 265);
+                    ctx.stroke();
+
+                    // Mast
+                    ctx.fillStyle = '#5c3a1e';
+                    ctx.fillRect(358, 140, 5, 112);
+
+                    // Sail
+                    ctx.fillStyle = '#f5f5f5';
+                    ctx.beginPath();
+                    ctx.moveTo(363, 145);
+                    ctx.lineTo(410, 180);
+                    ctx.lineTo(363, 245);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#ccc';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(363, 145);
+                    ctx.lineTo(410, 180);
+                    ctx.lineTo(363, 245);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    // Flag
+                    ctx.fillStyle = '#e63946';
+                    ctx.beginPath();
+                    ctx.moveTo(363, 140);
+                    ctx.lineTo(385, 148);
+                    ctx.lineTo(363, 156);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Clouds
+                    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                    [[100, 60, 50, 22], [130, 55, 35, 18], [80, 68, 30, 16],
+                     [350, 100, 45, 20], [375, 96, 32, 16], [330, 106, 28, 14]].forEach(([cx, cy, rx, ry]) => {
+                        ctx.beginPath();
+                        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                }
+                
+            }, [snake, item, obstacles, direction, level, gameState, snakeExpression, foxAppeared, titleBounce, enemyBounce, foxAnimationFrame, snakeReturning, returnAnimationFrame, showingPawPrints, snakeLeaving, leavingAnimationFrame]);
+
+            const bounceOffset = Math.sin(titleBounce / 10) * 15;
+
+            return (
+                <div className={`flex flex-col items-center justify-center min-h-screen bg-gradient-to-b ${backgroundGradient} p-4`}>
+                    <div className="bg-white rounded-lg shadow-2xl p-8 max-w-4xl">
+                        {gameState === 'title' && (
+                            <div className="text-center">
+                                <div style={{ transform: `translateY(${bounceOffset}px)`, transition: 'transform 0.1s' }}>
+                                    <h1 className="pixel-font text-5xl mb-8 text-yellow-600" style={{ lineHeight: '1.5' }}>
+                                        FOR THE EGG
+                                    </h1>
+                                </div>
+                                
+                                <canvas 
+                                    ref={canvasRef} 
+                                    width={CANVAS_SIZE} 
+                                    height={CANVAS_SIZE}
+                                    className="border-4 border-gray-800 mx-auto mb-8"
+                                    style={{ imageRendering: 'pixelated' }}
+                                />
+                                
+                                <div className="space-y-4">
+                                    <button onClick={() => startLevel(1)} className="pixel-button">
+                                        PRESS TO PLAY
+                                    </button>
+                                    
+                                    {savedProgress && savedProgress.level >= 1 && (
+                                        <div className="mt-4 space-y-3">
+                                            <button 
+                                                onClick={() => {
+                                                    setLevel(savedProgress.level);
+                                                    setScore(savedProgress.score);
+                                                    startLevel(savedProgress.level, true);
+                                                }}
+                                                className="pixel-button"
+                                                style={{ background: '#90EE90' }}
+                                            >
+                                                CONTINUE (LEVEL {savedProgress.level})
+                                            </button>
+
+                                            <button 
+                                                onClick={() => setShowLevelSelect(!showLevelSelect)}
+                                                className="pixel-button"
+                                                style={{ background: '#87CEEB' }}
+                                            >
+                                                SELECT LEVEL
+                                            </button>
+
+                                            {showLevelSelect && (
+                                                <div className="mt-3 space-y-2">
+                                                    {levels.map((lvl) => (
+                                                        lvl.id <= savedProgress.level && (
+                                                            <button
+                                                                key={lvl.id}
+                                                                onClick={() => {
+                                                                    setShowLevelSelect(false);
+                                                                    setLevel(lvl.id);
+                                                                    setScore(0);
+                                                                    startLevel(lvl.id);
+                                                                }}
+                                                                className="pixel-button block mx-auto"
+                                                                style={{ background: '#dda0dd', fontSize: '10px' }}
+                                                            >
+                                                                LEVEL {lvl.id} - {lvl.name.toUpperCase()}
+                                                            </button>
+                                                        )
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'playing' && showInstructions && (
+                            <div className="text-center space-y-6">
+                                <h2 className="pixel-font text-2xl text-yellow-600">LEVEL {level}</h2>
+                                <h3 className="pixel-font text-lg text-gray-700">{levels[level - 1].name.toUpperCase()}</h3>
+                                <div className="bg-gray-100 border-4 border-gray-300 rounded-lg p-6 inline-block">
+                                    <p className="pixel-font text-sm text-gray-800 mb-3">
+                                        {level === 1 && "Collect the Yellow Suns"}
+                                        {level === 2 && "Collect the Light Gray Mice"}
+                                        {level === 3 && "Collect the Brown Paw Prints"}
+                                        {level === 4 && "Collect the Pink Sea Shells"}
+                                    </p>
+                                    <p className="pixel-font text-sm text-gray-800">Avoid the Enemies</p>
+                                </div>
+                                <div>
+                                    <button 
+                                        onClick={() => setShowInstructions(false)} 
+                                        className="pixel-button"
+                                    >
+                                        START
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'playing' && !showInstructions && !showingPawPrints && (
+                            <div>
+                                <div className="flex justify-between mb-4 pixel-font text-sm">
+                                    <div className="text-purple-700">LEVEL {level}</div>
+                                    <div className="text-purple-700">{itemsCollected} / {itemsNeeded}</div>
+                                </div>
+                                
+                                <canvas 
+                                    ref={canvasRef} 
+                                    width={CANVAS_SIZE} 
+                                    height={CANVAS_SIZE}
+                                    className="border-4 border-gray-800 mx-auto"
+                                    style={{ imageRendering: 'pixelated' }}
+                                />
+                                
+                                <div className="text-center mt-4 text-gray-600 text-sm">
+                                    Use arrow keys to move
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'playing' && showInstructions && (
+                            <canvas 
+                                ref={canvasRef} 
+                                width={CANVAS_SIZE} 
+                                height={CANVAS_SIZE}
+                                style={{ display: 'none' }}
+                            />
+                        )}
+
+                        {gameState === 'levelComplete' && (
+                            <div className="text-center space-y-6">
+                                <h2 className="pixel-font text-3xl text-green-600">LEVEL COMPLETE!</h2>
+                                <p className="text-lg">Score: {score}</p>
+                                
+                                {level === 2 && !snakeReturning && !showingPawPrints && (
+                                    <button 
+                                        onClick={() => {
+                                            setGameState('playing');
+                                            setSnakeReturning(true);
+                                        }}
+                                        className="pixel-button"
+                                    >
+                                        CONTINUE
+                                    </button>
+                                )}
+                                
+                                {level < 2 && (
+                                    <div className="space-y-4">
+                                        <button 
+                                            onClick={() => {
+                                                setLevel(prev => prev + 1);
+                                                startLevel(level + 1);
+                                            }}
+                                            className="pixel-button"
+                                        >
+                                            NEXT LEVEL
+                                        </button>
+                                        
+                                        <button 
+                                            onClick={() => {
+                                                setGameState('title');
+                                                setBackgroundGradient('from-green-400 via-yellow-300 to-blue-400');
+                                            }}
+                                            className="pixel-button"
+                                            style={{ background: '#87CEEB' }}
+                                        >
+                                            EXIT
+                                        </button>
+                                    </div>
+                                )}
+
+                                {level === 3 && (
+                                    <div className="space-y-4">
+                                        <button 
+                                            onClick={() => setGameState('cutscene2')}
+                                            className="pixel-button"
+                                        >
+                                            CONTINUE
+                                        </button>
+                                    </div>
+                                )}
+
+                                {level === 4 && (
+                                    <div className="space-y-4">
+                                        <button 
+                                            onClick={() => setGameState('cutscene3')}
+                                            className="pixel-button"
+                                        >
+                                            CONTINUE
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {showingPawPrints && gameState === 'playing' && (
+                            <div className="text-center space-y-6">
+                                <div className="bg-gray-900 p-8 rounded-lg">
+                                    <canvas 
+                                        ref={canvasRef} 
+                                        width={CANVAS_SIZE} 
+                                        height={CANVAS_SIZE}
+                                        className="border-4 border-gray-600 mx-auto mb-6"
+                                        style={{ imageRendering: 'pixelated' }}
+                                    />
+                                    
+                                    <div className="space-y-4 text-white">
+                                        <p className="text-lg italic">
+                                            Paw prints lead into the darkness...
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <button onClick={() => setGameState('cutscene')} className="pixel-button">
+                                    CONTINUE
+                                </button>
+                            </div>
+                        )}
+
+                        {gameState === 'cutscene' && (
+                            <div className="text-center space-y-6">
+                                <div className="bg-gray-900 p-12 rounded-lg">
+                                    <p className="pixel-font text-2xl text-yellow-400 mb-4">
+                                        The trail leads deeper...
+                                    </p>
+                                    <p className="pixel-font text-lg text-gray-300 mb-8">
+                                        Into the sewer below.
+                                    </p>
+                                    
+                                    <button 
+                                        onClick={() => {
+                                            setLevel(3);
+                                            startLevel(3);
+                                        }}
+                                        className="pixel-button"
+                                    >
+                                        ENTER THE SEWER
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'cutscene2' && (
+                            <div className="text-center space-y-6">
+                                <div className="bg-gray-900 p-8 rounded-lg">
+                                    <p className="pixel-font text-xl text-yellow-400 mb-4">
+                                        The mother snake emerges...
+                                    </p>
+                                    <p className="pixel-font text-sm text-gray-300 mb-3">
+                                        Sunlight pours in as she crawls out of the sewer.
+                                    </p>
+                                    <p className="pixel-font text-sm text-gray-300 mb-3">
+                                        The paw prints continue...
+                                    </p>
+                                    <p className="pixel-font text-lg text-yellow-300 mb-4">
+                                        They lead to the beach.
+                                    </p>
+                                    
+                                    <button 
+                                        onClick={() => {
+                                            setLevel(4);
+                                            startLevel(4);
+                                        }}
+                                        className="pixel-button"
+                                    >
+                                        FOLLOW THE TRAIL
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'cutscene3' && (
+                            <div className="text-center space-y-6">
+                                <div className="bg-gray-900 p-8 rounded-lg">
+                                    <canvas 
+                                        ref={canvasRef} 
+                                        width={CANVAS_SIZE} 
+                                        height={CANVAS_SIZE}
+                                        className="border-4 border-gray-600 mx-auto mb-6"
+                                        style={{ imageRendering: 'pixelated' }}
+                                    />
+                                    <div className="space-y-4 mt-4">
+                                        <p className="pixel-font text-sm text-gray-300">
+                                            The paw prints lead across the sand...
+                                        </p>
+                                        <p className="pixel-font text-sm text-gray-300">
+                                            ...and onto a boat at the shore.
+                                        </p>
+                                        <p className="pixel-font text-2xl text-yellow-400 mt-4" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
+                                            TO BE CONTINUED...
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <button 
+                                    onClick={() => setGameState('ending')}
+                                    className="pixel-button"
+                                >
+                                    CONTINUE
+                                </button>
+                            </div>
+                        )}
+
+                        {gameState === 'ending' && (
+                            <div className="text-center space-y-6">
+                                <h2 className="pixel-font text-3xl text-purple-600">THANK YOU FOR PLAYING!</h2>
+                                <p className="text-lg">Final Score: {score}</p>
+                                <p className="text-gray-600">The adventure continues in the next chapter...</p>
+                                
+                                <button 
+                                    onClick={() => {
+                                        setGameState('title');
+                                        setLevel(1);
+                                        setScore(0);
+                                        setBackgroundGradient('from-green-400 via-yellow-300 to-blue-400');
+                                    }}
+                                    className="pixel-button"
+                                >
+                                    BACK TO MENU
+                                </button>
+                            </div>
+                        )}
+
+                        {gameOver && gameState === 'playing' && (
+                            <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+                                <div className="bg-white p-8 rounded-lg text-center space-y-6">
+                                    <h2 className="pixel-font text-4xl text-red-600">GAME OVER</h2>
+                                    
+                                    <div className="my-6">
+                                        <div className="inline-block bg-gray-200 rounded-full p-8">
+                                            <div className="text-6xl">😵</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <p className="text-lg">Score: {score}</p>
+                                    
+                                    <div className="space-y-3">
+                                        <button onClick={() => startLevel(level)} className="pixel-button block mx-auto">
+                                            START OVER
+                                        </button>
+                                        
+                                        <button 
+                                            onClick={() => {
+                                                setGameState('title');
+                                                setLevel(1);
+                                                setScore(0);
+                                                setGameOver(false);
+                                                setBackgroundGradient('from-green-400 via-yellow-300 to-blue-400');
+                                            }}
+                                            className="pixel-button block mx-auto"
+                                            style={{ background: '#ffb6c1' }}
+                                        >
+                                            START FROM BEGINNING
+                                        </button>
+                                        
+                                        <button 
+                                            onClick={() => {
+                                                saveGame();
+                                                setGameState('title');
+                                                setGameOver(false);
+                                                setBackgroundGradient('from-green-400 via-yellow-300 to-blue-400');
+                                            }}
+                                            className="pixel-button block mx-auto"
+                                            style={{ background: '#87CEEB' }}
+                                        >
+                                            EXIT & SAVE
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ForTheEgg />);
+    </script>
+</body>
+</html>
