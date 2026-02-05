@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOIDS // Flocking Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sky-light: #87ceeb;
+            --sky-mid: #5fa8d3;
+            --sky-deep: #4a90c4;
+            --cloud-white: rgba(255, 255, 255, 0.7);
+            --text-dark: #2c3e50;
+            --bird-color: #2c3e50;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: linear-gradient(180deg, var(--sky-light) 0%, var(--sky-mid) 50%, var(--sky-deep) 100%);
+            color: var(--text-dark);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .clouds-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .cloud {
+            position: absolute;
+            background: var(--cloud-white);
+            border-radius: 100px;
+            opacity: 0.6;
+            filter: blur(40px);
+            animation: drift linear infinite;
+        }
+
+        .cloud1 {
+            width: 300px;
+            height: 100px;
+            top: 10%;
+            left: -300px;
+            animation-duration: 120s;
+        }
+
+        .cloud2 {
+            width: 400px;
+            height: 120px;
+            top: 25%;
+            left: -400px;
+            animation-duration: 150s;
+            animation-delay: 20s;
+        }
+
+        .cloud3 {
+            width: 250px;
+            height: 80px;
+            top: 45%;
+            left: -250px;
+            animation-duration: 100s;
+            animation-delay: 40s;
+        }
+
+        .cloud4 {
+            width: 350px;
+            height: 110px;
+            top: 60%;
+            left: -350px;
+            animation-duration: 130s;
+            animation-delay: 60s;
+        }
+
+        .cloud5 {
+            width: 500px;
+            height: 150px;
+            top: 75%;
+            left: -500px;
+            animation-duration: 140s;
+            animation-delay: 10s;
+        }
+
+        .cloud6 {
+            width: 200px;
+            height: 70px;
+            top: 15%;
+            left: -200px;
+            animation-duration: 110s;
+            animation-delay: 80s;
+        }
+
+        @keyframes drift {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(calc(100vw + 500px));
+            }
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .header {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            text-align: center;
+            animation: floatIn 2s ease-out;
+        }
+
+        @keyframes floatIn {
+            0% { 
+                transform: translateX(-50%) translateY(-30px);
+                opacity: 0;
+            }
+            100% { 
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.95);
+            text-shadow: 
+                2px 2px 4px rgba(0, 0, 0, 0.2),
+                0 0 20px rgba(255, 255, 255, 0.4);
+            animation: sway 4s ease-in-out infinite;
+        }
+
+        @keyframes sway {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            letter-spacing: 0.25em;
+            margin-top: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px 30px;
+            border-top: 3px solid rgba(255, 255, 255, 0.95);
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(15px);
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            transition: transform 0.3s ease;
+        }
+
+        .controls.minimized {
+            transform: translateY(calc(100% - 40px));
+        }
+
+        .minimize-handle {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 8px 20px;
+            border: 2px solid var(--sky-deep);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            cursor: grab;
+            user-select: none;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 11;
+        }
+
+        .minimize-handle:active {
+            cursor: grabbing;
+        }
+
+        .minimize-text {
+            color: var(--sky-deep);
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .controls-section {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--sky-deep);
+            font-weight: 700;
+            margin-bottom: 12px;
+            border-bottom: 2px solid var(--sky-mid);
+            padding-bottom: 5px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 5px;
+            cursor: help;
+            color: var(--sky-mid);
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(44, 62, 80, 0.95);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            font-size: 0.65rem;
+            letter-spacing: 0.02em;
+            text-transform: none;
+            font-weight: normal;
+            margin-bottom: 5px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            background: rgba(74, 144, 196, 0.3);
+            border: 1px solid var(--sky-deep);
+            outline: none;
+            -webkit-appearance: none;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--sky-deep);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--sky-deep);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            border: none;
+            transition: all 0.2s;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .value-display {
+            display: inline-block;
+            color: var(--sky-deep);
+            font-weight: bold;
+            min-width: 35px;
+            text-align: right;
+        }
+
+        .presets-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .preset-btn {
+            padding: 10px 16px;
+            background: var(--sky-mid);
+            border: 2px solid var(--sky-deep);
+            color: white;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .preset-btn:hover {
+            background: var(--sky-deep);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 10px 16px;
+            background: white;
+            border: 2px solid var(--sky-deep);
+            color: var(--sky-deep);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .action-btn:hover {
+            background: var(--sky-deep);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .action-btn.paused {
+            background: var(--sky-deep);
+            color: white;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .toggle-label {
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: rgba(74, 144, 196, 0.3);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+            border: 1px solid var(--sky-deep);
+        }
+
+        .toggle-switch.active {
+            background: var(--sky-mid);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(26px);
+        }
+
+        .stats {
+            position: absolute;
+            top: 120px;
+            left: 30px;
+            z-index: 10;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.95);
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            border-radius: 10px;
+            animation: fadeIn 1s ease-out 0.6s both;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .stat-line {
+            margin: 5px 0;
+            letter-spacing: 0.05em;
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .stat-label {
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: white;
+        }
+
+        .glow-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            margin-right: 8px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.6;
+                transform: scale(1.2);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="clouds-container">
+        <div class="cloud cloud1"></div>
+        <div class="cloud cloud2"></div>
+        <div class="cloud cloud3"></div>
+        <div class="cloud cloud4"></div>
+        <div class="cloud cloud5"></div>
+        <div class="cloud cloud6"></div>
+    </div>
+
+    <div class="header">
+        <h1>BOIDS</h1>
+        <div class="subtitle">FLOCKING BIRDS IN FLIGHT</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="stats">
+        <div class="stat-line">
+            <span class="stat-label"><span class="glow-dot"></span>ACTIVE BIRDS</span>
+            <span class="stat-value" id="activeBoids">150</span>
+        </div>
+        <div class="stat-line">
+            <span class="stat-label"><span class="glow-dot"></span>FPS</span>
+            <span class="stat-value" id="fps">60</span>
+        </div>
+        <div class="stat-line">
+            <span class="stat-label"><span class="glow-dot"></span>AVG SPEED</span>
+            <span class="stat-value" id="avgSpeed">0.0</span>
+        </div>
+        <div class="stat-line">
+            <span class="stat-label"><span class="glow-dot"></span>AVG NEIGHBORS</span>
+            <span class="stat-value" id="avgNeighbors">0.0</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="minimize-handle" id="minimizeHandle">
+            <span class="minimize-text">Minimize</span>
+        </div>
+
+        <!-- Parameters Section -->
+        <div class="controls-section">
+            <div class="section-title">Flocking Parameters</div>
+            
+            <div class="control-group">
+                <label>
+                    <span>Separation <span class="tooltip" data-tooltip="How much birds avoid crowding neighbors">?</span></span>
+                    <span class="value-display" id="separationValue">1.5</span>
+                </label>
+                <input type="range" id="separation" min="0" max="3" step="0.1" value="1.5">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span>Alignment <span class="tooltip" data-tooltip="How much birds match velocity with neighbors">?</span></span>
+                    <span class="value-display" id="alignmentValue">1.0</span>
+                </label>
+                <input type="range" id="alignment" min="0" max="3" step="0.1" value="1.0">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span>Cohesion <span class="tooltip" data-tooltip="How much birds steer toward center of neighbors">?</span></span>
+                    <span class="value-display" id="cohesionValue">1.0</span>
+                </label>
+                <input type="range" id="cohesion" min="0" max="3" step="0.1" value="1.0">
+            </div>
+        </div>
+
+        <!-- Additional Parameters Section -->
+        <div class="controls-section">
+            <div class="section-title">Movement Settings</div>
+            
+            <div class="control-group">
+                <label>
+                    <span>Neighbor Radius <span class="tooltip" data-tooltip="How far birds can see their neighbors">?</span></span>
+                    <span class="value-display" id="perceptionValue">75</span>
+                </label>
+                <input type="range" id="perception" min="30" max="150" step="5" value="75">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span>Max Speed <span class="tooltip" data-tooltip="Maximum velocity birds can reach">?</span></span>
+                    <span class="value-display" id="maxSpeedValue">3.0</span>
+                </label>
+                <input type="range" id="maxSpeed" min="1" max="6" step="0.1" value="3.0">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span>Bird Count <span class="tooltip" data-tooltip="Total number of birds in simulation">?</span></span>
+                    <span class="value-display" id="countValue">150</span>
+                </label>
+                <input type="range" id="count" min="50" max="300" step="10" value="150">
+            </div>
+        </div>
+
+        <!-- Presets Section -->
+        <div class="controls-section">
+            <div class="section-title">Behavior Presets</div>
+            <div class="presets-container">
+                <button class="preset-btn" id="schoolingBtn">🐟 Schooling</button>
+                <button class="preset-btn" id="migrationBtn">🦆 Migration</button>
+                <button class="preset-btn" id="chaoticBtn">🌪️ Chaotic Swarm</button>
+                <button class="preset-btn" id="clusterBtn">⭕ Tight Cluster</button>
+            </div>
+        </div>
+
+        <!-- Boundary & Actions Section -->
+        <div class="controls-section">
+            <div class="section-title">Boundary & Controls</div>
+            
+            <div class="toggle-container">
+                <span class="toggle-label">WRAP</span>
+                <div class="toggle-switch" id="boundaryToggle">
+                    <div class="toggle-slider"></div>
+                </div>
+                <span class="toggle-label">BOUNCE</span>
+            </div>
+
+            <div class="action-buttons">
+                <button class="action-btn" id="pauseBtn">PAUSE</button>
+                <button class="action-btn" id="resetBtn">RESET</button>
+            </div>
+        </div>
+
+        <!-- Mouse Interactions Section -->
+        <div class="controls-section">
+            <div class="section-title">Mouse Interactions</div>
+            <div class="presets-container">
+                <button class="preset-btn" id="mouseOffBtn">🚫 Off</button>
+                <button class="preset-btn" id="mouseWindBtn">🌬️ Wind</button>
+                <button class="preset-btn" id="mousePlaneBtn">✈️ Plane</button>
+                <button class="preset-btn" id="mouseBigBirdBtn">🦅 Big Bird</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Parameters
+        let params = {
+            separationWeight: 1.5,
+            alignmentWeight: 1.0,
+            cohesionWeight: 1.0,
+            perceptionRadius: 75,
+            boidCount: 150,
+            maxSpeed: 3.0,
+            maxForce: 0.1,
+            boundaryMode: 'wrap', // 'wrap' or 'bounce'
+            migrationMode: false,
+            mouseMode: 'off' // 'off', 'wind', 'plane', 'bigbird'
+        };
+
+        let isPaused = false;
+        let collisionPauseTimer = 0;
+        
+        // Mouse interaction state
+        let mousePos = { x: 0, y: 0 };
+        let windZone = { x: 0, y: 0, width: 200, height: 100 };
+        let windDirection = 'right'; // 'right' or 'left'
+        let planeRotation = 0;
+        let explosions = [];
+        let bigBirdBoids = [];
+        let hasExplodedOnce = false; // Track if first explosion has occurred
+        
+        // Track mouse position
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mousePos.x = e.clientX - rect.left;
+            mousePos.y = e.clientY - rect.top;
+        });
+
+        // Toggle wind direction on click
+        canvas.addEventListener('click', (e) => {
+            if (params.mouseMode === 'wind') {
+                const rect = canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                
+                // Click on left side = wind from left
+                // Click on right side = wind from right
+                windDirection = clickX < canvas.width / 2 ? 'left' : 'right';
+                updateWindButtonText();
+            }
+        });
+
+        // Explosion class
+        class Explosion {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 0;
+                this.maxRadius = 50;
+                this.opacity = 1;
+                this.particles = [];
+                
+                // Create particles
+                for (let i = 0; i < 15; i++) {
+                    const angle = (Math.PI * 2 * i) / 15;
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * 3,
+                        vy: Math.sin(angle) * 3
+                    });
+                }
+                
+                // Play explosion sound
+                this.playSound();
+            }
+            
+            playSound() {
+                // Create a simple explosion sound using Web Audio API
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(150, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            }
+            
+            update() {
+                this.radius += 2;
+                this.opacity -= 0.02;
+                
+                for (let p of this.particles) {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.1; // gravity
+                }
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                
+                // Draw expanding circle
+                ctx.strokeStyle = '#ff6b00';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Draw particles
+                ctx.fillStyle = '#ff3300';
+                for (let p of this.particles) {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+            
+            isDone() {
+                return this.opacity <= 0;
+            }
+        }
+
+        function createBigBird() {
+            // Select 30 boids to form the big bird
+            bigBirdBoids = [];
+            for (let i = 0; i < Math.min(30, boids.length); i++) {
+                bigBirdBoids.push(boids[i]);
+            }
+        }
+        class Boid {
+            constructor() {
+                this.position = {
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height
+                };
+                // Random velocity in any direction
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 2 + 1;
+                this.velocity = {
+                    x: Math.cos(angle) * speed,
+                    y: Math.sin(angle) * speed
+                };
+                this.acceleration = { x: 0, y: 0 };
+                this.color = 'rgba(44, 62, 80, 0.9)';
+                this.groupId = null;
+                this.isLeader = false;
+                this.positionInV = 0; // 0 = leader, 1-3 = left wing, 4-6 = right wing
+            }
+
+            edges() {
+                if (params.boundaryMode === 'wrap') {
+                    // Wrap around edges
+                    if (this.position.x > canvas.width) this.position.x = 0;
+                    else if (this.position.x < 0) this.position.x = canvas.width;
+                    if (this.position.y > canvas.height) this.position.y = 0;
+                    else if (this.position.y < 0) this.position.y = canvas.height;
+                } else {
+                    // Bounce off edges
+                    const margin = 50;
+                    if (this.position.x > canvas.width - margin) {
+                        this.velocity.x = -Math.abs(this.velocity.x);
+                    } else if (this.position.x < margin) {
+                        this.velocity.x = Math.abs(this.velocity.x);
+                    }
+                    if (this.position.y > canvas.height - margin) {
+                        this.velocity.y = -Math.abs(this.velocity.y);
+                    } else if (this.position.y < margin) {
+                        this.velocity.y = Math.abs(this.velocity.y);
+                    }
+                }
+            }
+
+            align(boids) {
+                let steering = { x: 0, y: 0 };
+                let total = 0;
+                for (let other of boids) {
+                    let d = this.distance(other);
+                    if (other !== this && d < params.perceptionRadius) {
+                        steering.x += other.velocity.x;
+                        steering.y += other.velocity.y;
+                        total++;
+                    }
+                }
+                if (total > 0) {
+                    steering.x /= total;
+                    steering.y /= total;
+                    this.setMag(steering, params.maxSpeed);
+                    steering.x -= this.velocity.x;
+                    steering.y -= this.velocity.y;
+                    this.limit(steering, params.maxForce);
+                }
+                return steering;
+            }
+
+            cohesion(boids) {
+                let steering = { x: 0, y: 0 };
+                let total = 0;
+                for (let other of boids) {
+                    let d = this.distance(other);
+                    if (other !== this && d < params.perceptionRadius) {
+                        steering.x += other.position.x;
+                        steering.y += other.position.y;
+                        total++;
+                    }
+                }
+                if (total > 0) {
+                    steering.x /= total;
+                    steering.y /= total;
+                    steering.x -= this.position.x;
+                    steering.y -= this.position.y;
+                    this.setMag(steering, params.maxSpeed);
+                    steering.x -= this.velocity.x;
+                    steering.y -= this.velocity.y;
+                    this.limit(steering, params.maxForce);
+                }
+                return steering;
+            }
+
+            separation(boids) {
+                let steering = { x: 0, y: 0 };
+                let total = 0;
+                for (let other of boids) {
+                    let d = this.distance(other);
+                    if (other !== this && d < params.perceptionRadius) {
+                        let diff = {
+                            x: this.position.x - other.position.x,
+                            y: this.position.y - other.position.y
+                        };
+                        if (d > 0) {
+                            diff.x /= d;
+                            diff.y /= d;
+                        }
+                        steering.x += diff.x;
+                        steering.y += diff.y;
+                        total++;
+                    }
+                }
+                if (total > 0) {
+                    steering.x /= total;
+                    steering.y /= total;
+                    this.setMag(steering, params.maxSpeed);
+                    steering.x -= this.velocity.x;
+                    steering.y -= this.velocity.y;
+                    this.limit(steering, params.maxForce);
+                }
+                return steering;
+            }
+
+            flock(boids) {
+                // Handle mouse interactions first
+                if (params.mouseMode === 'wind') {
+                    this.applyWind();
+                } else if (params.mouseMode === 'bigbird') {
+                    this.followBigBird();
+                } else if (params.mouseMode === 'plane') {
+                    this.avoidPlane();
+                }
+                
+                if (params.migrationMode) {
+                    this.flockVFormation(boids);
+                } else {
+                    let alignment = this.align(boids);
+                    let cohesion = this.cohesion(boids);
+                    let separation = this.separation(boids);
+
+                    this.acceleration.x += alignment.x * params.alignmentWeight;
+                    this.acceleration.y += alignment.y * params.alignmentWeight;
+                    this.acceleration.x += cohesion.x * params.cohesionWeight;
+                    this.acceleration.y += cohesion.y * params.cohesionWeight;
+                    this.acceleration.x += separation.x * params.separationWeight;
+                    this.acceleration.y += separation.y * params.separationWeight;
+                }
+            }
+
+            applyWind() {
+                // Wind beam is controlled by mouse Y position
+                windZone.y = mousePos.y - windZone.height / 2;
+                
+                // Check if boid is in wind zone
+                if (this.position.y > windZone.y && 
+                    this.position.y < windZone.y + windZone.height) {
+                    
+                    // Calculate if boid is facing the wind
+                    const velocityAngle = Math.atan2(this.velocity.y, this.velocity.x);
+                    const windAngle = windDirection === 'right' ? 0 : Math.PI; // Right = 0, Left = PI
+                    
+                    // Calculate angle difference
+                    let angleDiff = Math.abs(velocityAngle - windAngle);
+                    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                    
+                    // Strong force to push boid in wind direction
+                    const windForce = 0.15;
+                    if (windDirection === 'right') {
+                        this.acceleration.x += windForce;
+                    } else {
+                        this.acceleration.x -= windForce;
+                    }
+                    
+                    // If facing wind (angle difference > 90 degrees), apply STRONG slowdown
+                    if (angleDiff > Math.PI / 2) {
+                        const slowdownFactor = 0.60; // Really slow down to 60% of speed when facing wind
+                        this.velocity.x *= slowdownFactor;
+                        this.velocity.y *= slowdownFactor;
+                    } else {
+                        // When flowing with wind, maintain speed but let wind guide direction
+                        this.velocity.x *= 0.92;
+                        this.velocity.y *= 0.92;
+                    }
+                }
+            }
+
+            followBigBird() {
+                // Calculate center of big bird formation (at mouse position)
+                const bigBirdCenterX = mousePos.x;
+                const bigBirdCenterY = mousePos.y;
+                const attractionRadius = 120; // Smaller attraction circle
+                
+                // Calculate distance to big bird center
+                const dx = bigBirdCenterX - this.position.x;
+                const dy = bigBirdCenterY - this.position.y;
+                const distToBigBird = Math.sqrt(dx * dx + dy * dy);
+                
+                // Check if this boid is part of the big bird formation
+                const isPartOfBigBird = bigBirdBoids.includes(this);
+                
+                if (isPartOfBigBird) {
+                    // Big bird boids stay close to mouse cursor
+                    if (distToBigBird > 80) {
+                        let desired = {
+                            x: bigBirdCenterX - this.position.x,
+                            y: bigBirdCenterY - this.position.y
+                        };
+                        
+                        this.setMag(desired, params.maxSpeed);
+                        let steer = {
+                            x: desired.x - this.velocity.x,
+                            y: desired.y - this.velocity.y
+                        };
+                        this.limit(steer, params.maxForce * 2);
+                        this.acceleration.x += steer.x;
+                        this.acceleration.y += steer.y;
+                    }
+                } else {
+                    // All other boids are attracted when within radius
+                    if (distToBigBird < attractionRadius) {
+                        let desired = {
+                            x: bigBirdCenterX - this.position.x,
+                            y: bigBirdCenterY - this.position.y
+                        };
+                        
+                        // Stronger attraction the closer they are
+                        const attractionStrength = 1 - (distToBigBird / attractionRadius);
+                        
+                        this.setMag(desired, params.maxSpeed * 0.6);
+                        let steer = {
+                            x: desired.x - this.velocity.x,
+                            y: desired.y - this.velocity.y
+                        };
+                        this.limit(steer, params.maxForce * attractionStrength);
+                        this.acceleration.x += steer.x * 0.5;
+                        this.acceleration.y += steer.y * 0.5;
+                    }
+                }
+            }
+
+            avoidPlane() {
+                // Calculate distance to plane
+                const dx = mousePos.x - this.position.x;
+                const dy = mousePos.y - this.position.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // If within avoidance radius (100px), flee from plane
+                if (distance < 150 && distance > 0) {
+                    let flee = {
+                        x: this.position.x - mousePos.x,
+                        y: this.position.y - mousePos.y
+                    };
+                    
+                    // Stronger avoidance when closer
+                    const strength = (150 - distance) / 150;
+                    this.setMag(flee, params.maxSpeed * strength);
+                    
+                    let steer = {
+                        x: flee.x - this.velocity.x,
+                        y: flee.y - this.velocity.y
+                    };
+                    this.limit(steer, params.maxForce * 3);
+                    
+                    this.acceleration.x += steer.x;
+                    this.acceleration.y += steer.y;
+                }
+            }
+
+            flockVFormation(boids) {
+                // Find boids in the same group
+                const groupMembers = boids.filter(b => b.groupId === this.groupId);
+                
+                if (this.isLeader) {
+                    // Leader flies straight and steady
+                    const currentSpeed = this.getMagnitude(this.velocity);
+                    if (currentSpeed < params.maxSpeed * 0.8) {
+                        this.velocity.x *= 1.01;
+                        this.velocity.y *= 1.01;
+                    }
+                } else {
+                    // Find the leader of this group
+                    const leader = groupMembers.find(b => b.isLeader);
+                    if (!leader) return;
+
+                    // Calculate desired position relative to leader
+                    const leaderAngle = Math.atan2(leader.velocity.y, leader.velocity.x);
+                    const vAngle = 35 * (Math.PI / 180); // 35 degree V angle
+                    const spacing = 25; // Distance between birds
+                    
+                    let targetX, targetY;
+                    
+                    if (this.positionInV <= 3) {
+                        // Left wing (positions 1, 2, 3)
+                        const offset = this.positionInV;
+                        const angle = leaderAngle + vAngle;
+                        targetX = leader.position.x - Math.cos(angle) * spacing * offset;
+                        targetY = leader.position.y - Math.sin(angle) * spacing * offset;
+                    } else {
+                        // Right wing (positions 4, 5, 6)
+                        const offset = this.positionInV - 3;
+                        const angle = leaderAngle - vAngle;
+                        targetX = leader.position.x - Math.cos(angle) * spacing * offset;
+                        targetY = leader.position.y - Math.sin(angle) * spacing * offset;
+                    }
+
+                    // Steer toward target position
+                    let desired = {
+                        x: targetX - this.position.x,
+                        y: targetY - this.position.y
+                    };
+                    
+                    this.setMag(desired, params.maxSpeed);
+                    let steer = {
+                        x: desired.x - this.velocity.x,
+                        y: desired.y - this.velocity.y
+                    };
+                    this.limit(steer, params.maxForce * 2);
+                    
+                    this.acceleration.x += steer.x;
+                    this.acceleration.y += steer.y;
+
+                    // Match leader's velocity
+                    let alignment = {
+                        x: leader.velocity.x - this.velocity.x,
+                        y: leader.velocity.y - this.velocity.y
+                    };
+                    this.limit(alignment, params.maxForce * 0.5);
+                    this.acceleration.x += alignment.x;
+                    this.acceleration.y += alignment.y;
+
+                    // Slight separation from others in group
+                    let separation = this.separation(groupMembers);
+                    this.acceleration.x += separation.x * 0.5;
+                    this.acceleration.y += separation.y * 0.5;
+                }
+            }
+
+            update() {
+                this.position.x += this.velocity.x;
+                this.position.y += this.velocity.y;
+                this.velocity.x += this.acceleration.x;
+                this.velocity.y += this.acceleration.y;
+                this.limit(this.velocity, params.maxSpeed);
+                this.acceleration.x = 0;
+                this.acceleration.y = 0;
+            }
+
+            show() {
+                // Draw bird as V-shape
+                ctx.save();
+                ctx.translate(this.position.x, this.position.y);
+                const angle = Math.atan2(this.velocity.y, this.velocity.x);
+                ctx.rotate(angle);
+                
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                // Draw V-shape bird
+                ctx.beginPath();
+                // Left wing
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-8, -6);
+                // Right wing
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-8, 6);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+
+            distance(other) {
+                return Math.sqrt(
+                    Math.pow(this.position.x - other.position.x, 2) +
+                    Math.pow(this.position.y - other.position.y, 2)
+                );
+            }
+
+            setMag(vec, mag) {
+                const currentMag = Math.sqrt(vec.x * vec.x + vec.y * vec.y);
+                if (currentMag > 0) {
+                    vec.x = (vec.x / currentMag) * mag;
+                    vec.y = (vec.y / currentMag) * mag;
+                }
+            }
+
+            limit(vec, max) {
+                const mag = Math.sqrt(vec.x * vec.x + vec.y * vec.y);
+                if (mag > max) {
+                    vec.x = (vec.x / mag) * max;
+                    vec.y = (vec.y / mag) * max;
+                }
+            }
+
+            getMagnitude(vec) {
+                return Math.sqrt(vec.x * vec.x + vec.y * vec.y);
+            }
+        }
+
+        // Initialize boids
+        let boids = [];
+        function initBoids() {
+            boids = [];
+            for (let i = 0; i < params.boidCount; i++) {
+                boids.push(new Boid());
+            }
+            if (params.migrationMode) {
+                assignVFormations();
+            }
+        }
+
+        function assignVFormations() {
+            const groupSize = 7;
+            const numGroups = Math.ceil(boids.length / groupSize);
+            
+            for (let g = 0; g < numGroups; g++) {
+                const startIdx = g * groupSize;
+                const endIdx = Math.min(startIdx + groupSize, boids.length);
+                
+                for (let i = startIdx; i < endIdx; i++) {
+                    boids[i].groupId = g;
+                    const posInGroup = i - startIdx;
+                    
+                    if (posInGroup === 0) {
+                        boids[i].isLeader = true;
+                        boids[i].positionInV = 0;
+                    } else {
+                        boids[i].isLeader = false;
+                        boids[i].positionInV = posInGroup;
+                    }
+                }
+            }
+        }
+        initBoids();
+
+        // FPS counter
+        let lastTime = performance.now();
+        let fps = 60;
+
+        // Animation loop
+        function animate() {
+            // Calculate FPS
+            const currentTime = performance.now();
+            const delta = currentTime - lastTime;
+            fps = Math.round(1000 / delta);
+            lastTime = currentTime;
+
+            // Clear canvas completely for clean bird rendering
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw wind zone if active
+            if (params.mouseMode === 'wind') {
+                windZone.y = mousePos.y - windZone.height / 2;
+                
+                // Draw wind beam
+                ctx.fillStyle = 'rgba(200, 220, 255, 0.3)';
+                ctx.fillRect(0, windZone.y, canvas.width, windZone.height);
+                
+                // Draw wind border
+                ctx.strokeStyle = 'rgba(150, 180, 255, 0.8)';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(0, windZone.y, canvas.width, windZone.height);
+                
+                // Draw wind lines moving in direction
+                ctx.strokeStyle = 'rgba(150, 180, 255, 0.6)';
+                ctx.lineWidth = 2;
+                const time = Date.now() / 15;
+                const numLines = 8;
+                
+                for (let i = 0; i < numLines; i++) {
+                    const y = windZone.y + (i / numLines) * windZone.height + windZone.height / (numLines * 2);
+                    
+                    if (windDirection === 'right') {
+                        // Lines moving right
+                        for (let j = 0; j < 5; j++) {
+                            const offset = ((time + j * 150) % (canvas.width + 150)) - 150;
+                            ctx.beginPath();
+                            ctx.moveTo(offset, y);
+                            ctx.lineTo(offset + 80, y);
+                            ctx.stroke();
+                        }
+                    } else {
+                        // Lines moving left
+                        for (let j = 0; j < 5; j++) {
+                            const offset = canvas.width - ((time + j * 150) % (canvas.width + 150));
+                            ctx.beginPath();
+                            ctx.moveTo(offset, y);
+                            ctx.lineTo(offset - 80, y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+                
+                // Draw direction arrows
+                ctx.fillStyle = 'rgba(100, 140, 255, 0.6)';
+                const arrowY = windZone.y + windZone.height / 2;
+                const numArrows = 6;
+                
+                for (let i = 0; i < numArrows; i++) {
+                    const arrowX = (i / numArrows) * canvas.width + canvas.width / (numArrows * 2);
+                    
+                    ctx.beginPath();
+                    if (windDirection === 'right') {
+                        ctx.moveTo(arrowX - 15, arrowY - 12);
+                        ctx.lineTo(arrowX + 15, arrowY);
+                        ctx.lineTo(arrowX - 15, arrowY + 12);
+                        ctx.lineTo(arrowX - 10, arrowY);
+                    } else {
+                        ctx.moveTo(arrowX + 15, arrowY - 12);
+                        ctx.lineTo(arrowX - 15, arrowY);
+                        ctx.lineTo(arrowX + 15, arrowY + 12);
+                        ctx.lineTo(arrowX + 10, arrowY);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+
+            if (!isPaused && collisionPauseTimer <= 0) {
+                // Calculate average speed and neighbors
+                let totalSpeed = 0;
+                let totalNeighbors = 0;
+
+                // Update and draw boids
+                for (let boid of boids) {
+                    boid.edges();
+                    boid.flock(boids);
+                    boid.update();
+                    
+                    // Check plane collision
+                    if (params.mouseMode === 'plane') {
+                        const dx = boid.position.x - mousePos.x;
+                        const dy = boid.position.y - mousePos.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < 30) {
+                            // Create explosion
+                            explosions.push(new Explosion(boid.position.x, boid.position.y));
+                            // Remove boid
+                            const index = boids.indexOf(boid);
+                            if (index > -1) {
+                                boids.splice(index, 1);
+                            }
+                            // Only pause on first explosion
+                            if (!hasExplodedOnce) {
+                                collisionPauseTimer = 180; // 3 seconds at 60fps
+                                hasExplodedOnce = true;
+                            }
+                            continue;
+                        }
+                    }
+                    
+                    // Calculate speed
+                    totalSpeed += boid.getMagnitude(boid.velocity);
+                    
+                    // Count neighbors
+                    let neighborCount = 0;
+                    for (let other of boids) {
+                        if (other !== boid && boid.distance(other) < params.perceptionRadius) {
+                            neighborCount++;
+                        }
+                    }
+                    totalNeighbors += neighborCount;
+                }
+
+                // Update explosions
+                for (let i = explosions.length - 1; i >= 0; i--) {
+                    explosions[i].update();
+                    if (explosions[i].isDone()) {
+                        explosions.splice(i, 1);
+                    }
+                }
+
+                // Update instrumentation
+                const avgSpeed = (totalSpeed / boids.length).toFixed(2);
+                const avgNeighbors = (totalNeighbors / boids.length).toFixed(1);
+                document.getElementById('avgSpeed').textContent = avgSpeed;
+                document.getElementById('avgNeighbors').textContent = avgNeighbors;
+            } else if (collisionPauseTimer > 0) {
+                // Decrement pause timer
+                collisionPauseTimer--;
+                
+                // Still update explosions during pause
+                for (let i = explosions.length - 1; i >= 0; i--) {
+                    explosions[i].update();
+                    if (explosions[i].isDone()) {
+                        explosions.splice(i, 1);
+                    }
+                }
+            }
+
+            // Always draw boids even when paused
+            for (let boid of boids) {
+                boid.show();
+            }
+
+            // Draw explosions
+            for (let explosion of explosions) {
+                explosion.draw(ctx);
+            }
+
+            // Draw plane if active
+            if (params.mouseMode === 'plane') {
+                ctx.save();
+                ctx.translate(mousePos.x, mousePos.y);
+                planeRotation = Math.atan2(mousePos.y - canvas.height / 2, mousePos.x - canvas.width / 2);
+                ctx.rotate(planeRotation);
+                
+                // Draw plane body
+                ctx.fillStyle = '#666';
+                ctx.fillRect(-20, -3, 40, 6);
+                
+                // Draw wings
+                ctx.fillStyle = '#888';
+                ctx.fillRect(-5, -15, 10, 30);
+                
+                // Draw nose
+                ctx.fillStyle = '#444';
+                ctx.beginPath();
+                ctx.moveTo(20, 0);
+                ctx.lineTo(25, -3);
+                ctx.lineTo(25, 3);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            // Draw big bird indicator if active
+            if (params.mouseMode === 'bigbird' && bigBirdBoids.length > 0) {
+                // Draw attraction radius circle
+                ctx.strokeStyle = 'rgba(255, 200, 0, 0.4)';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 5]);
+                ctx.beginPath();
+                ctx.arc(mousePos.x, mousePos.y, 120, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Draw circle around big bird boids
+                ctx.strokeStyle = 'rgba(255, 200, 0, 0.6)';
+                ctx.lineWidth = 2;
+                for (let bb of bigBirdBoids) {
+                    ctx.beginPath();
+                    ctx.arc(bb.position.x, bb.position.y, 12, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Draw cursor as big bird
+                ctx.save();
+                ctx.translate(mousePos.x, mousePos.y);
+                ctx.fillStyle = 'rgba(255, 200, 0, 0.8)';
+                ctx.strokeStyle = 'rgba(200, 150, 0, 0.9)';
+                ctx.lineWidth = 3;
+                
+                // Draw large bird shape
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-20, -15);
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-20, 15);
+                ctx.stroke();
+                
+                // Draw center dot
+                ctx.fillStyle = 'rgba(255, 200, 0, 1)';
+                ctx.beginPath();
+                ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            // Update stats
+            document.getElementById('activeBoids').textContent = boids.length;
+            document.getElementById('fps').textContent = fps;
+
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Controls
+        const controls = {
+            separation: document.getElementById('separation'),
+            alignment: document.getElementById('alignment'),
+            cohesion: document.getElementById('cohesion'),
+            perception: document.getElementById('perception'),
+            maxSpeed: document.getElementById('maxSpeed'),
+            count: document.getElementById('count')
+        };
+
+        controls.separation.addEventListener('input', (e) => {
+            params.separationWeight = parseFloat(e.target.value);
+            document.getElementById('separationValue').textContent = e.target.value;
+        });
+
+        controls.alignment.addEventListener('input', (e) => {
+            params.alignmentWeight = parseFloat(e.target.value);
+            document.getElementById('alignmentValue').textContent = e.target.value;
+        });
+
+        controls.cohesion.addEventListener('input', (e) => {
+            params.cohesionWeight = parseFloat(e.target.value);
+            document.getElementById('cohesionValue').textContent = e.target.value;
+        });
+
+        controls.perception.addEventListener('input', (e) => {
+            params.perceptionRadius = parseInt(e.target.value);
+            document.getElementById('perceptionValue').textContent = e.target.value;
+        });
+
+        controls.maxSpeed.addEventListener('input', (e) => {
+            params.maxSpeed = parseFloat(e.target.value);
+            document.getElementById('maxSpeedValue').textContent = e.target.value;
+        });
+
+        controls.count.addEventListener('input', (e) => {
+            params.boidCount = parseInt(e.target.value);
+            document.getElementById('countValue').textContent = e.target.value;
+            initBoids();
+        });
+
+        // Preset buttons
+        document.getElementById('schoolingBtn').addEventListener('click', () => {
+            // Schooled together like fish - high alignment, high cohesion, low separation, larger perception
+            params.migrationMode = false;
+            params.alignmentWeight = 2.8;
+            params.cohesionWeight = 2.5;
+            params.separationWeight = 0.5;
+            params.perceptionRadius = 120;
+            params.maxSpeed = 2.5;
+            updateControlDisplays();
+        });
+
+        document.getElementById('chaoticBtn').addEventListener('click', () => {
+            // Low alignment, low cohesion, small neighbor radius
+            params.migrationMode = false;
+            params.alignmentWeight = 0.5;
+            params.cohesionWeight = 0.5;
+            params.separationWeight = 1.5;
+            params.perceptionRadius = 40;
+            params.maxSpeed = 3.5;
+            updateControlDisplays();
+        });
+
+        document.getElementById('clusterBtn').addEventListener('click', () => {
+            // High cohesion, higher separation to prevent overlap
+            params.migrationMode = false;
+            params.alignmentWeight = 1.2;
+            params.cohesionWeight = 2.5;
+            params.separationWeight = 2.0;
+            params.perceptionRadius = 100;
+            params.maxSpeed = 2.0;
+            updateControlDisplays();
+        });
+
+        document.getElementById('migrationBtn').addEventListener('click', () => {
+            // V-formation: enable migration mode
+            params.migrationMode = true;
+            params.alignmentWeight = 2.8;
+            params.cohesionWeight = 1.8;
+            params.separationWeight = 1.3;
+            params.perceptionRadius = 100;
+            params.maxSpeed = 3.0;
+            updateControlDisplays();
+            assignVFormations();
+        });
+
+        // Update control displays after preset
+        function updateControlDisplays() {
+            controls.separation.value = params.separationWeight;
+            controls.alignment.value = params.alignmentWeight;
+            controls.cohesion.value = params.cohesionWeight;
+            controls.perception.value = params.perceptionRadius;
+            controls.maxSpeed.value = params.maxSpeed;
+            
+            document.getElementById('separationValue').textContent = params.separationWeight.toFixed(1);
+            document.getElementById('alignmentValue').textContent = params.alignmentWeight.toFixed(1);
+            document.getElementById('cohesionValue').textContent = params.cohesionWeight.toFixed(1);
+            document.getElementById('perceptionValue').textContent = params.perceptionRadius;
+            document.getElementById('maxSpeedValue').textContent = params.maxSpeed.toFixed(1);
+        }
+
+        // Boundary toggle
+        const boundaryToggle = document.getElementById('boundaryToggle');
+        boundaryToggle.addEventListener('click', () => {
+            boundaryToggle.classList.toggle('active');
+            params.boundaryMode = boundaryToggle.classList.contains('active') ? 'bounce' : 'wrap';
+        });
+
+        // Pause button
+        const pauseBtn = document.getElementById('pauseBtn');
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? 'RESUME' : 'PAUSE';
+            pauseBtn.classList.toggle('paused');
+        });
+
+        // Reset button
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            initBoids();
+        });
+
+        // Mouse mode buttons
+        document.getElementById('mouseOffBtn').addEventListener('click', () => {
+            params.mouseMode = 'off';
+            bigBirdBoids = [];
+        });
+
+        document.getElementById('mouseWindBtn').addEventListener('click', () => {
+            params.mouseMode = 'wind';
+            bigBirdBoids = [];
+            windDirection = 'right'; // Default to right
+            updateWindButtonText();
+        });
+
+        document.getElementById('mousePlaneBtn').addEventListener('click', () => {
+            params.mouseMode = 'plane';
+            bigBirdBoids = [];
+            explosions = [];
+            hasExplodedOnce = false; // Reset explosion flag when entering plane mode
+        });
+
+        function updateWindButtonText() {
+            const windBtn = document.getElementById('mouseWindBtn');
+            windBtn.textContent = `🌬️ Wind (${windDirection})`;
+        }
+
+        // Minimize/draggable functionality
+        const minimizeHandle = document.getElementById('minimizeHandle');
+        const controlsPanel = document.querySelector('.controls');
+        let isDragging = false;
+        let startY = 0;
+        let startBottom = 0;
+        let currentBottom = 0;
+
+        minimizeHandle.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startBottom = currentBottom;
+            minimizeHandle.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const deltaY = startY - e.clientY;
+            const newBottom = Math.max(-controlsPanel.offsetHeight + 40, Math.min(0, startBottom + deltaY));
+            currentBottom = newBottom;
+            controlsPanel.style.transform = `translateY(${-newBottom}px)`;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            minimizeHandle.style.cursor = 'grab';
+            
+            // Snap to open or closed based on position
+            const threshold = controlsPanel.offsetHeight / 2;
+            if (Math.abs(currentBottom) > threshold) {
+                // Minimize
+                controlsPanel.classList.add('minimized');
+                currentBottom = -controlsPanel.offsetHeight + 40;
+                minimizeHandle.querySelector('.minimize-text').textContent = 'Maximize';
+            } else {
+                // Maximize
+                controlsPanel.classList.remove('minimized');
+                currentBottom = 0;
+                minimizeHandle.querySelector('.minimize-text').textContent = 'Minimize';
+            }
+            controlsPanel.style.transform = '';
+        });
+
+        // Click to toggle
+        minimizeHandle.addEventListener('click', (e) => {
+            if (e.target === minimizeHandle || e.target.classList.contains('minimize-text')) {
+                controlsPanel.classList.toggle('minimized');
+                if (controlsPanel.classList.contains('minimized')) {
+                    minimizeHandle.querySelector('.minimize-text').textContent = 'Maximize';
+                    currentBottom = -controlsPanel.offsetHeight + 40;
+                } else {
+                    minimizeHandle.querySelector('.minimize-text').textContent = 'Minimize';
+                    currentBottom = 0;
+                }
+            }
+        });
+
+        document.getElementById('mouseBigBirdBtn').addEventListener('click', () => {
+            params.mouseMode = 'bigbird';
+            createBigBird();
+        });
+    </script>
+</body>
+</html>
