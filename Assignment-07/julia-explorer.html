@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Julia Set Explorer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Space+Grotesk:wght@400;600;700&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #08080d;
+    --panel: rgba(255,255,255,0.035);
+    --panel-border: rgba(255,255,255,0.07);
+    --cyan: #00e5ff;
+    --pink: #ff6ec7;
+    --text: #d0d0d8;
+    --text-dim: #6a6a7a;
+    --radius: 10px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    padding: 28px 20px 18px;
+    position: relative;
+  }
+  header h1 {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--cyan), var(--pink));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+  header p {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Main Layout ── */
+  .app {
+    display: flex;
+    gap: 16px;
+    padding: 0 20px 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    align-items: flex-start;
+  }
+
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--panel-border);
+    background: #000;
+    aspect-ratio: 1;
+    max-height: calc(100vh - 140px);
+  }
+  .canvas-wrap canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: crosshair;
+  }
+
+  .coord-overlay {
+    position: absolute;
+    bottom: 10px; left: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.5);
+    pointer-events: none;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  }
+  .zoom-badge {
+    position: absolute;
+    top: 10px; right: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--cyan);
+    background: rgba(0,0,0,0.6);
+    padding: 3px 8px;
+    border-radius: 6px;
+    pointer-events: none;
+  }
+
+  /* ── Controls Panel ── */
+  .controls {
+    width: 300px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .panel-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  /* Sliders */
+  .slider-group { margin-bottom: 10px; }
+  .slider-group:last-child { margin-bottom: 0; }
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    margin-bottom: 5px;
+    color: var(--text);
+  }
+  .slider-label .val { color: var(--cyan); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--cyan);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0,229,255,0.4);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--cyan);
+    border: none;
+    cursor: pointer;
+  }
+
+  /* Preset buttons */
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .preset-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    background: rgba(255,255,255,0.03);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .preset-btn:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    box-shadow: 0 0 10px rgba(0,229,255,0.15);
+  }
+  .preset-btn.active {
+    border-color: var(--cyan);
+    background: rgba(0,229,255,0.1);
+    color: var(--cyan);
+  }
+
+  /* Color scheme selector */
+  select {
+    width: 100%;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    cursor: pointer;
+    outline: none;
+  }
+  select:focus { border-color: var(--cyan); }
+
+  /* Mini Mandelbrot */
+  .mini-mandelbrot {
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: crosshair;
+    aspect-ratio: 1.4;
+  }
+  .mini-mandelbrot canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .mini-dot {
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--pink);
+    box-shadow: 0 0 8px var(--pink);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: left 0.15s, top 0.15s;
+  }
+
+  /* Action buttons */
+  .actions {
+    display: flex;
+    gap: 6px;
+  }
+  .action-btn {
+    flex: 1;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 9px 0;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    background: rgba(255,255,255,0.03);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .action-btn:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+  .action-btn.active-anim {
+    border-color: var(--pink);
+    background: rgba(255,110,199,0.1);
+    color: var(--pink);
+  }
+
+  /* Fractal mode toggle */
+  .mode-toggle {
+    display: flex;
+    gap: 4px;
+  }
+  .mode-btn {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    padding: 6px 0;
+    text-align: center;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mode-btn.active {
+    border-color: var(--cyan);
+    background: rgba(0,229,255,0.08);
+    color: var(--cyan);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 820px) {
+    .app {
+      flex-direction: column;
+      padding: 0 12px 20px;
+    }
+    .canvas-wrap {
+      aspect-ratio: 1;
+      max-height: 55vh;
+      width: 100%;
+    }
+    .controls {
+      width: 100%;
+    }
+  }
+
+  /* Glow animations */
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 15px rgba(0,229,255,0.08); }
+    50% { box-shadow: 0 0 25px rgba(0,229,255,0.15); }
+  }
+  .canvas-wrap { animation: pulse-glow 4s ease-in-out infinite; }
+
+  /* Loading overlay */
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8,8,13,0.7);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--cyan);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .loading-overlay.visible { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Julia Set Explorer</h1>
+  <p>z → z² + c &nbsp;·&nbsp; infinite complexity from one equation</p>
+</header>
+
+<div class="app">
+  <!-- Main Canvas -->
+  <div class="canvas-wrap" id="mainWrap">
+    <canvas id="mainCanvas"></canvas>
+    <div class="coord-overlay" id="coordDisplay">z = 0 + 0i</div>
+    <div class="zoom-badge" id="zoomBadge">1.0×</div>
+    <div class="loading-overlay" id="loadingOverlay">rendering…</div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+
+    <!-- Fractal Mode -->
+    <div class="panel">
+      <div class="panel-title">Fractal Mode</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="julia">Julia Set</button>
+        <button class="mode-btn" data-mode="burning">Burning Ship</button>
+      </div>
+    </div>
+
+    <!-- C Parameter -->
+    <div class="panel">
+      <div class="panel-title">Parameter c</div>
+      <div class="slider-group">
+        <div class="slider-label"><span>Real</span><span class="val" id="reVal">-0.750</span></div>
+        <input type="range" id="reSlider" min="-2" max="2" step="0.001" value="-0.75">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label"><span>Imaginary</span><span class="val" id="imVal">0.110</span></div>
+        <input type="range" id="imSlider" min="-2" max="2" step="0.001" value="0.11">
+      </div>
+    </div>
+
+    <!-- Presets -->
+    <div class="panel">
+      <div class="panel-title">Presets</div>
+      <div class="presets" id="presetContainer"></div>
+    </div>
+
+    <!-- Color Scheme -->
+    <div class="panel">
+      <div class="panel-title">Color Scheme</div>
+      <select id="colorSelect">
+        <option value="inferno">🔥 Inferno</option>
+        <option value="ocean">🌊 Ocean</option>
+        <option value="neon">💜 Neon</option>
+        <option value="grayscale">🌑 Grayscale</option>
+        <option value="psychedelic">🌈 Psychedelic</option>
+        <option value="ice">❄️ Ice</option>
+      </select>
+    </div>
+
+    <!-- Max Iterations -->
+    <div class="panel">
+      <div class="slider-group">
+        <div class="slider-label"><span>Max Iterations</span><span class="val" id="iterVal">200</span></div>
+        <input type="range" id="iterSlider" min="50" max="800" step="10" value="200">
+      </div>
+    </div>
+
+    <!-- Mini Mandelbrot -->
+    <div class="panel">
+      <div class="panel-title">Mandelbrot Map — click to pick c</div>
+      <div class="mini-mandelbrot" id="miniMandelbrot">
+        <canvas id="mandelbrotCanvas"></canvas>
+        <div class="mini-dot" id="miniDot"></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="panel">
+      <div class="actions">
+        <button class="action-btn" id="animateBtn">▶ Animate</button>
+        <button class="action-btn" id="saveBtn">↓ Save PNG</button>
+        <button class="action-btn" id="resetBtn">⟲ Reset</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  Julia Set Explorer — Core Engine
+// ═══════════════════════════════════════════════════
+
+const mainCanvas = document.getElementById('mainCanvas');
+const mainCtx = mainCanvas.getContext('2d');
+const mandelbrotCanvas = document.getElementById('mandelbrotCanvas');
+const mandelbrotCtx = mandelbrotCanvas.getContext('2d');
+
+// State
+const state = {
+  cRe: -0.75,
+  cIm: 0.11,
+  maxIter: 200,
+  colorScheme: 'inferno',
+  mode: 'julia',           // 'julia' or 'burning'
+  // View transform
+  centerX: 0,
+  centerY: 0,
+  zoom: 1,
+  // Animation
+  animating: false,
+  animAngle: 0,
+  // Interaction
+  dragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  dragCenterX: 0,
+  dragCenterY: 0,
+};
+
+// Presets
+const PRESETS = [
+  { name: 'Spiral',        re: -0.75,   im: 0.11  },
+  { name: 'Dendrite',      re: -0.1,    im: 0.651 },
+  { name: 'Rabbit',        re: -0.123,  im: 0.745 },
+  { name: 'San Marco',     re: -0.75,   im: 0.0   },
+  { name: 'Dragons',       re: 0.36,    im: 0.1   },
+  { name: 'Starfish',      re: -0.5,    im: 0.563 },
+  { name: 'Lightning',     re: -0.4,    im: 0.6   },
+  { name: 'Galaxy',        re: 0.285,   im: 0.01  },
+  { name: 'Frost',         re: -0.7269, im: 0.1889},
+];
+
+// Color palettes — each returns [r,g,b] for t in [0,1]
+const COLOR_SCHEMES = {
+  inferno(t) {
+    const r = Math.min(255, Math.floor(t < 0.5 ? t * 2 * 255 : 255));
+    const g = Math.min(255, Math.floor(t < 0.5 ? 0 : (t - 0.5) * 2 * 200));
+    const b = Math.min(255, Math.floor(t < 0.25 ? t * 4 * 180 : (1 - t) * 120));
+    return [r, g, b];
+  },
+  ocean(t) {
+    return [
+      Math.floor(t * 30),
+      Math.floor(50 + t * 150),
+      Math.floor(80 + t * 175)
+    ];
+  },
+  neon(t) {
+    const angle = t * Math.PI * 2;
+    return [
+      Math.floor(128 + 127 * Math.sin(angle)),
+      Math.floor(128 + 127 * Math.sin(angle + 2.094)),
+      Math.floor(128 + 127 * Math.sin(angle + 4.189))
+    ];
+  },
+  grayscale(t) {
+    const v = Math.floor(t * 255);
+    return [v, v, v];
+  },
+  psychedelic(t) {
+    return [
+      Math.floor(128 + 127 * Math.sin(t * 15)),
+      Math.floor(128 + 127 * Math.sin(t * 13 + 2)),
+      Math.floor(128 + 127 * Math.sin(t * 11 + 4))
+    ];
+  },
+  ice(t) {
+    return [
+      Math.floor(200 + 55 * t),
+      Math.floor(220 + 35 * t),
+      255,
+    ];
+  },
+};
+
+// ── Rendering ──
+
+function renderJulia(canvas, ctx, cRe, cIm, maxIter, colorScheme, centerX, centerY, zoom, mode) {
+  const w = canvas.width;
+  const h = canvas.height;
+  const imgData = ctx.createImageData(w, h);
+  const data = imgData.data;
+  const colorFn = COLOR_SCHEMES[colorScheme] || COLOR_SCHEMES.inferno;
+  const scale = 3.2 / (zoom * Math.min(w, h));
+  const burning = mode === 'burning';
+
+  for (let py = 0; py < h; py++) {
+    for (let px = 0; px < w; px++) {
+      let x0 = (px - w / 2) * scale + centerX;
+      let y0 = (py - h / 2) * scale + centerY;
+
+      let zx = x0, zy = y0;
+      let i = 0;
+
+      if (burning) {
+        // Burning Ship: z = (|Re(z)| + i|Im(z)|)² + c
+        while (i < maxIter && zx * zx + zy * zy < 4) {
+          const ax = Math.abs(zx), ay = Math.abs(zy);
+          const xtemp = ax * ax - ay * ay + cRe;
+          zy = 2 * ax * ay + cIm;
+          zx = xtemp;
+          i++;
+        }
+      } else {
+        // Julia: z = z² + c
+        while (i < maxIter && zx * zx + zy * zy < 4) {
+          const xtemp = zx * zx - zy * zy + cRe;
+          zy = 2 * zx * zy + cIm;
+          zx = xtemp;
+          i++;
+        }
+      }
+
+      const idx = (py * w + px) * 4;
+      if (i === maxIter) {
+        data[idx] = 0;
+        data[idx + 1] = 0;
+        data[idx + 2] = 0;
+        data[idx + 3] = 255;
+      } else {
+        // Smooth coloring
+        const log_zn = Math.log(zx * zx + zy * zy) / 2;
+        const nu = Math.log(log_zn / Math.LN2) / Math.LN2;
+        const smoothed = (i + 1 - nu) / maxIter;
+        const t = Math.max(0, Math.min(1, smoothed * 4));
+        const [r, g, b] = colorFn(t);
+        data[idx] = r;
+        data[idx + 1] = g;
+        data[idx + 2] = b;
+        data[idx + 3] = 255;
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+function renderMandelbrot() {
+  const c = mandelbrotCanvas;
+  const ctx = mandelbrotCtx;
+  const w = c.width;
+  const h = c.height;
+  const imgData = ctx.createImageData(w, h);
+  const data = imgData.data;
+  const colorFn = COLOR_SCHEMES[state.colorScheme] || COLOR_SCHEMES.inferno;
+
+  for (let py = 0; py < h; py++) {
+    for (let px = 0; px < w; px++) {
+      const x0 = (px / w) * 3.5 - 2.5;
+      const y0 = (py / h) * 2.4 - 1.2;
+
+      let zx = 0, zy = 0, i = 0;
+      const mi = 120;
+      while (i < mi && zx * zx + zy * zy < 4) {
+        const xtemp = zx * zx - zy * zy + x0;
+        zy = 2 * zx * zy + y0;
+        zx = xtemp;
+        i++;
+      }
+
+      const idx = (py * w + px) * 4;
+      if (i === mi) {
+        data[idx] = 0;
+        data[idx + 1] = 0;
+        data[idx + 2] = 0;
+        data[idx + 3] = 255;
+      } else {
+        const t = Math.min(1, (i / mi) * 4);
+        const [r, g, b] = colorFn(t);
+        data[idx] = r;
+        data[idx + 1] = g;
+        data[idx + 2] = b;
+        data[idx + 3] = 255;
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+// ── Canvas Sizing ──
+
+function resizeCanvases() {
+  const wrap = document.getElementById('mainWrap');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const rect = wrap.getBoundingClientRect();
+  const size = Math.floor(Math.min(rect.width, rect.height));
+
+  mainCanvas.width = size * dpr;
+  mainCanvas.height = size * dpr;
+  mainCanvas.style.width = size + 'px';
+  mainCanvas.style.height = size + 'px';
+
+  // Mandelbrot mini
+  const mWrap = document.getElementById('miniMandelbrot');
+  const mRect = mWrap.getBoundingClientRect();
+  mandelbrotCanvas.width = Math.floor(mRect.width) * dpr;
+  mandelbrotCanvas.height = Math.floor(mRect.height) * dpr;
+}
+
+// ── Render Dispatch ──
+
+let renderQueued = false;
+function scheduleRender() {
+  if (!renderQueued) {
+    renderQueued = true;
+    requestAnimationFrame(() => {
+      renderQueued = false;
+      render();
+    });
+  }
+}
+
+function render() {
+  renderJulia(
+    mainCanvas, mainCtx,
+    state.cRe, state.cIm,
+    state.maxIter, state.colorScheme,
+    state.centerX, state.centerY, state.zoom,
+    state.mode
+  );
+  updateUI();
+}
+
+function renderAll() {
+  render();
+  renderMandelbrot();
+  updateMiniDot();
+}
+
+function updateUI() {
+  document.getElementById('reVal').textContent = state.cRe.toFixed(3);
+  document.getElementById('imVal').textContent = state.cIm.toFixed(3);
+  document.getElementById('iterVal').textContent = state.maxIter;
+  document.getElementById('zoomBadge').textContent = state.zoom.toFixed(1) + '×';
+}
+
+function updateMiniDot() {
+  const dot = document.getElementById('miniDot');
+  const pctX = (state.cRe + 2.5) / 3.5 * 100;
+  const pctY = (state.cIm + 1.2) / 2.4 * 100;
+  dot.style.left = pctX + '%';
+  dot.style.top = pctY + '%';
+}
+
+// ── Slider Controls ──
+
+document.getElementById('reSlider').addEventListener('input', e => {
+  state.cRe = parseFloat(e.target.value);
+  scheduleRender();
+  updateMiniDot();
+});
+document.getElementById('imSlider').addEventListener('input', e => {
+  state.cIm = parseFloat(e.target.value);
+  scheduleRender();
+  updateMiniDot();
+});
+document.getElementById('iterSlider').addEventListener('input', e => {
+  state.maxIter = parseInt(e.target.value);
+  scheduleRender();
+});
+document.getElementById('colorSelect').addEventListener('change', e => {
+  state.colorScheme = e.target.value;
+  renderAll();
+});
+
+// ── Presets ──
+
+const presetContainer = document.getElementById('presetContainer');
+PRESETS.forEach(p => {
+  const btn = document.createElement('button');
+  btn.className = 'preset-btn';
+  btn.textContent = p.name;
+  btn.addEventListener('click', () => {
+    animateToC(p.re, p.im);
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+  presetContainer.appendChild(btn);
+});
+
+function animateToC(targetRe, targetIm) {
+  const startRe = state.cRe, startIm = state.cIm;
+  const duration = 400;
+  const start = performance.now();
+
+  function step(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const ease = t * (2 - t); // ease-out
+    state.cRe = startRe + (targetRe - startRe) * ease;
+    state.cIm = startIm + (targetIm - startIm) * ease;
+    document.getElementById('reSlider').value = state.cRe;
+    document.getElementById('imSlider').value = state.cIm;
+    updateMiniDot();
+    render();
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ── Fractal Mode Toggle ──
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.mode = btn.dataset.mode;
+    scheduleRender();
+  });
+});
+
+// ── Mini Mandelbrot Click ──
+
+document.getElementById('miniMandelbrot').addEventListener('click', e => {
+  const rect = mandelbrotCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  const re = x * 3.5 - 2.5;
+  const im = y * 2.4 - 1.2;
+  animateToC(re, im);
+});
+
+// ── Mouse interactions on main canvas ──
+
+mainCanvas.addEventListener('mousemove', e => {
+  const rect = mainCanvas.getBoundingClientRect();
+  const dpr = mainCanvas.width / rect.width;
+  const px = (e.clientX - rect.left) * dpr;
+  const py = (e.clientY - rect.top) * dpr;
+  const scale = 3.2 / (state.zoom * Math.min(mainCanvas.width, mainCanvas.height));
+  const zr = (px - mainCanvas.width / 2) * scale + state.centerX;
+  const zi = (py - mainCanvas.height / 2) * scale + state.centerY;
+  document.getElementById('coordDisplay').textContent =
+    `z = ${zr.toFixed(4)} ${zi >= 0 ? '+' : '−'} ${Math.abs(zi).toFixed(4)}i`;
+});
+
+// Pan
+mainCanvas.addEventListener('mousedown', e => {
+  state.dragging = true;
+  state.dragStartX = e.clientX;
+  state.dragStartY = e.clientY;
+  state.dragCenterX = state.centerX;
+  state.dragCenterY = state.centerY;
+  mainCanvas.style.cursor = 'grabbing';
+});
+window.addEventListener('mousemove', e => {
+  if (!state.dragging) return;
+  const rect = mainCanvas.getBoundingClientRect();
+  const dpr = mainCanvas.width / rect.width;
+  const scale = 3.2 / (state.zoom * Math.min(mainCanvas.width, mainCanvas.height));
+  state.centerX = state.dragCenterX - (e.clientX - state.dragStartX) * dpr * scale;
+  state.centerY = state.dragCenterY - (e.clientY - state.dragStartY) * dpr * scale;
+  scheduleRender();
+});
+window.addEventListener('mouseup', () => {
+  state.dragging = false;
+  mainCanvas.style.cursor = 'crosshair';
+});
+
+// Zoom
+mainCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+
+  // Zoom toward cursor
+  const rect = mainCanvas.getBoundingClientRect();
+  const dpr = mainCanvas.width / rect.width;
+  const px = (e.clientX - rect.left) * dpr;
+  const py = (e.clientY - rect.top) * dpr;
+  const scale = 3.2 / (state.zoom * Math.min(mainCanvas.width, mainCanvas.height));
+  const zr = (px - mainCanvas.width / 2) * scale + state.centerX;
+  const zi = (py - mainCanvas.height / 2) * scale + state.centerY;
+
+  state.zoom *= factor;
+  state.centerX = zr - (px - mainCanvas.width / 2) * (3.2 / (state.zoom * Math.min(mainCanvas.width, mainCanvas.height)));
+  state.centerY = zi - (py - mainCanvas.height / 2) * (3.2 / (state.zoom * Math.min(mainCanvas.width, mainCanvas.height)));
+  scheduleRender();
+}, { passive: false });
+
+// ── Action Buttons ──
+
+// Animate
+let animFrame = null;
+document.getElementById('animateBtn').addEventListener('click', () => {
+  state.animating = !state.animating;
+  const btn = document.getElementById('animateBtn');
+  if (state.animating) {
+    btn.textContent = '■ Stop';
+    btn.classList.add('active-anim');
+    function loop() {
+      state.animAngle += 0.012;
+      const r = 0.7885;
+      state.cRe = r * Math.cos(state.animAngle);
+      state.cIm = r * Math.sin(state.animAngle);
+      document.getElementById('reSlider').value = state.cRe;
+      document.getElementById('imSlider').value = state.cIm;
+      updateMiniDot();
+      render();
+      if (state.animating) animFrame = requestAnimationFrame(loop);
+    }
+    loop();
+  } else {
+    btn.textContent = '▶ Animate';
+    btn.classList.remove('active-anim');
+    if (animFrame) cancelAnimationFrame(animFrame);
+  }
+});
+
+// Save
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = `julia_${state.cRe.toFixed(3)}_${state.cIm.toFixed(3)}.png`;
+  link.href = mainCanvas.toDataURL('image/png');
+  link.click();
+});
+
+// Reset
+document.getElementById('resetBtn').addEventListener('click', () => {
+  state.centerX = 0;
+  state.centerY = 0;
+  state.zoom = 1;
+  state.cRe = -0.75;
+  state.cIm = 0.11;
+  document.getElementById('reSlider').value = state.cRe;
+  document.getElementById('imSlider').value = state.cIm;
+  document.getElementById('iterSlider').value = 200;
+  state.maxIter = 200;
+  if (state.animating) {
+    state.animating = false;
+    document.getElementById('animateBtn').textContent = '▶ Animate';
+    document.getElementById('animateBtn').classList.remove('active-anim');
+    if (animFrame) cancelAnimationFrame(animFrame);
+  }
+  renderAll();
+});
+
+// ── Touch support ──
+let lastTouchDist = 0;
+mainCanvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    state.dragging = true;
+    state.dragStartX = e.touches[0].clientX;
+    state.dragStartY = e.touches[0].clientY;
+    state.dragCenterX = state.centerX;
+    state.dragCenterY = state.centerY;
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+  }
+  e.preventDefault();
+}, { passive: false });
+
+mainCanvas.addEventListener('touchmove', e => {
+  if (e.touches.length === 1 && state.dragging) {
+    const rect = mainCanvas.getBoundingClientRect();
+    const dpr = mainCanvas.width / rect.width;
+    const scale = 3.2 / (state.zoom * Math.min(mainCanvas.width, mainCanvas.height));
+    state.centerX = state.dragCenterX - (e.touches[0].clientX - state.dragStartX) * dpr * scale;
+    state.centerY = state.dragCenterY - (e.touches[0].clientY - state.dragStartY) * dpr * scale;
+    scheduleRender();
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (lastTouchDist > 0) {
+      state.zoom *= dist / lastTouchDist;
+      scheduleRender();
+    }
+    lastTouchDist = dist;
+  }
+  e.preventDefault();
+}, { passive: false });
+
+mainCanvas.addEventListener('touchend', () => {
+  state.dragging = false;
+  lastTouchDist = 0;
+});
+
+// ── Init ──
+
+function init() {
+  resizeCanvases();
+  renderAll();
+}
+
+window.addEventListener('resize', () => {
+  resizeCanvases();
+  renderAll();
+});
+
+init();
+</script>
+</body>
+</html>

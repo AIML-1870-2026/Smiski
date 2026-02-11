@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turing Patterns Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Roboto:wght@300;400;500&family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0000;
+            --bg-secondary: #1a0505;
+            --bg-card: rgba(255,255,255,0.05);
+            --text-primary: #f0f0f0;
+            --text-secondary: #aaaaaa;
+            --accent: #ff4500;
+            --border: rgba(255,255,255,0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: background 0.6s ease;
+            overflow-x: hidden;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-family: 'Poppins', sans-serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--accent), #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .subtitle {
+            max-width: 640px;
+            font-size: 1rem;
+            font-weight: 300;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .canvas-wrap {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+
+        #simCanvas {
+            display: block;
+            width: 800px;
+            height: 600px;
+            max-width: 90vw;
+            max-height: 68vh;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(6px);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            color: #ccc;
+            pointer-events: none;
+        }
+
+        .scroll-hint {
+            margin-top: 32px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            animation: bounce 2s ease infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(8px); }
+        }
+
+        /* Controls Section */
+        .controls-section {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            transition: background 0.3s;
+        }
+
+        .panel:hover {
+            background: rgba(255,255,255,0.07);
+        }
+
+        .panel h2 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--accent);
+        }
+
+        .panel-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* Buttons */
+        .btn {
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 10px 20px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.08);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: var(--accent);
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .btn.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .btn.primary:hover {
+            filter: brightness(1.15);
+        }
+
+        /* Selects / Dropdowns */
+        select {
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.9rem;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.08);
+            color: var(--text-primary);
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23aaa'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 30px;
+            min-width: 160px;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        select option {
+            background: #1a1a1a;
+            color: #f0f0f0;
+        }
+
+        /* Sliders */
+        .slider-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+        }
+
+        .slider-label span:last-child {
+            font-family: 'Roboto Mono', monospace;
+            color: var(--accent);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #fff;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #fff;
+            cursor: pointer;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: #1a1a2e;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            min-width: 320px;
+            text-align: center;
+        }
+
+        .modal h3 {
+            font-family: 'Poppins', sans-serif;
+            margin-bottom: 20px;
+            color: var(--accent);
+        }
+
+        .modal .btn {
+            margin: 8px;
+            min-width: 140px;
+        }
+
+        /* Color scheme button group */
+        .color-btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .color-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            border: 2px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            font-family: 'Roboto', sans-serif;
+            color: #fff;
+        }
+
+        .color-btn:hover { filter: brightness(1.2); transform: scale(1.05); }
+        .color-btn.active { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.3); }
+        .color-btn[data-scheme="fire"] { background: linear-gradient(135deg, #8b0000, #ff4500); }
+        .color-btn[data-scheme="ice"] { background: linear-gradient(135deg, #001a4d, #4682b4); }
+        .color-btn[data-scheme="ocean"] { background: linear-gradient(135deg, #003d5c, #1ca3c4); }
+        .color-btn[data-scheme="purple"] { background: linear-gradient(135deg, #330033, #ba55d3); }
+        .color-btn[data-scheme="rainbow"] { background: linear-gradient(135deg, #4b0082, #ff0000); }
+
+        /* Recording indicator */
+        .recording-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff0000;
+            margin-right: 6px;
+            animation: blink 1s ease infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 860px) {
+            #simCanvas { width: 100%; height: auto; }
+            .panel-row { flex-direction: column; }
+            .slider-group { min-width: 100%; }
+            select { width: 100%; }
+        }
+
+        /* Loading spinner */
+        .loader {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.6);
+            z-index: 5;
+            transition: opacity 0.4s;
+        }
+
+        .loader.hidden { opacity: 0; pointer-events: none; }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Step button for freeze-frame mode */
+        #stepBtn {
+            display: none;
+        }
+
+        #stepBtn.visible {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Hero Section -->
+<section class="hero">
+    <h1>Turing Patterns Explorer</h1>
+    <p class="subtitle">
+        Explore the mesmerizing world of reaction-diffusion systems. These mathematical patterns
+        emerge from simple chemical reactions, creating organic, nature-like forms.<br><br>
+        Click on the canvas to add spawn points and watch patterns emerge.
+        Scroll down to customize your simulation.
+    </p>
+    <div class="canvas-wrap" id="canvasWrap">
+        <div class="loader" id="loader"><div class="spinner"></div></div>
+        <canvas id="simCanvas" width="800" height="600"></canvas>
+        <div class="canvas-overlay" id="fpsDisplay">FPS: --</div>
+    </div>
+    <p class="scroll-hint">&#8595; Scroll down to customize &#8595;</p>
+</section>
+
+<!-- Controls Section -->
+<section class="controls-section">
+
+    <!-- Model Selection -->
+    <div class="panel">
+        <h2>Simulation Model</h2>
+        <div class="panel-row">
+            <select id="modelSelect" aria-label="Simulation model">
+                <option value="gray-scott" selected>Gray-Scott</option>
+                <option value="brusselator">Brusselator</option>
+                <option value="schnakenberg">Schnakenberg</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Color Scheme -->
+    <div class="panel">
+        <h2>Color Scheme</h2>
+        <div class="color-btn-group">
+            <button class="color-btn active" data-scheme="fire">Fire</button>
+            <button class="color-btn" data-scheme="ice">Ice</button>
+            <button class="color-btn" data-scheme="ocean">Ocean</button>
+            <button class="color-btn" data-scheme="purple">Purple</button>
+            <button class="color-btn" data-scheme="rainbow">Rainbow</button>
+        </div>
+    </div>
+
+    <!-- Simulation Controls -->
+    <div class="panel">
+        <h2>Simulation Controls</h2>
+        <div class="panel-row">
+            <button class="btn primary" id="pauseBtn">Pause</button>
+            <button class="btn" id="resetBtn">Reset</button>
+            <button class="btn" id="clearBtn">Clear All</button>
+            <button class="btn" id="saveBtn">Save</button>
+            <button class="btn" id="stepBtn">Step Forward</button>
+        </div>
+    </div>
+
+    <!-- Parameters -->
+    <div class="panel">
+        <h2>Parameters</h2>
+        <div class="panel-row">
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Feed Rate</span>
+                    <span id="feedVal">0.055</span>
+                </div>
+                <input type="range" id="feedSlider" min="0.01" max="0.10" step="0.001" value="0.055" aria-label="Feed rate">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Kill Rate</span>
+                    <span id="killVal">0.062</span>
+                </div>
+                <input type="range" id="killSlider" min="0.03" max="0.07" step="0.001" value="0.062" aria-label="Kill rate">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Simulation Speed</span>
+                    <span id="speedVal">1.0x</span>
+                </div>
+                <input type="range" id="speedSlider" min="0.1" max="5.0" step="0.1" value="1.0" aria-label="Simulation speed">
+            </div>
+        </div>
+    </div>
+
+    <!-- Animation Mode -->
+    <div class="panel">
+        <h2>Animation Mode</h2>
+        <div class="panel-row">
+            <select id="animSelect" aria-label="Animation mode">
+                <option value="standard" selected>Standard</option>
+                <option value="pulse">Pulse</option>
+                <option value="spiral">Spiral</option>
+                <option value="chaotic">Chaotic</option>
+                <option value="freeze">Freeze-Frame (Manual Step)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Kaleidoscope -->
+    <div class="panel">
+        <h2>Kaleidoscope Mode</h2>
+        <div class="panel-row">
+            <button class="btn" id="kaleidoBtn">Kaleidoscope: OFF</button>
+            <select id="kaleidoSymmetry" aria-label="Kaleidoscope symmetry">
+                <option value="4">4-fold</option>
+                <option value="6">6-fold</option>
+                <option value="8" selected>8-fold</option>
+            </select>
+        </div>
+    </div>
+
+</section>
+
+<div class="footer">Turing Patterns Explorer &mdash; Reaction-Diffusion Simulation</div>
+
+<!-- Save Modal -->
+<div class="modal-overlay" id="saveModal">
+    <div class="modal">
+        <h3>Save Creation</h3>
+        <p id="recordingStatus" style="margin-bottom:16px; font-size:0.9rem; color:var(--text-secondary);"></p>
+        <button class="btn" id="saveVideoBtn">Save as Video (.webm)</button>
+        <button class="btn" id="saveImageBtn">Save as Image (.png)</button>
+        <br>
+        <button class="btn" id="closeModalBtn" style="margin-top:12px; opacity:0.7;">Cancel</button>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    /* ===== CONSTANTS ===== */
+    const SIM_W = 200;
+    const SIM_H = 150;
+    const CANVAS_W = 800;
+    const CANVAS_H = 600;
+
+    /* ===== COLOR PALETTES ===== */
+    const palettes = {
+        fire:    ['#0a0000','#4a0000','#8b0000','#ff4500','#ff8c00','#ffd700','#ffffe0'],
+        ice:     ['#000033','#001a4d','#0047ab','#4682b4','#87ceeb','#b0e0e6','#f0ffff'],
+        ocean:   ['#001f3f','#003d5c','#006994','#0088a8','#1ca3c4','#5dbcd2','#ffffcc'],
+        purple:  ['#1a001a','#330033','#4b0082','#8b008b','#ba55d3','#da70d6','#f8f8ff'],
+        rainbow: ['#4b0082','#0000ff','#00ffff','#00ff00','#ffff00','#ff7f00','#ff0000']
+    };
+
+    const themes = {
+        fire:    { bgP: '#0a0000', bgS: '#1a0505', accent: '#ff4500' },
+        ice:     { bgP: '#000020', bgS: '#000a33', accent: '#4682b4' },
+        ocean:   { bgP: '#001520', bgS: '#002530', accent: '#1ca3c4' },
+        purple:  { bgP: '#0d000d', bgS: '#1a0020', accent: '#ba55d3' },
+        rainbow: { bgP: '#0a0010', bgS: '#150020', accent: '#ff7f00' }
+    };
+
+    /* ===== MODEL CONFIGS ===== */
+    const modelConfigs = {
+        'gray-scott': {
+            Du: 0.21, Dv: 0.105, dt: 1.0, subSteps: 1,
+            defaultFeed: 0.055, defaultKill: 0.062,
+        },
+        'brusselator': {
+            Du: 1.0, Dv: 16.0, dt: 0.02, subSteps: 10,
+            defaultFeed: 0.040, defaultKill: 0.052,
+        },
+        'schnakenberg': {
+            Du: 1.0, Dv: 20.0, dt: 0.02, subSteps: 10,
+            defaultFeed: 0.040, defaultKill: 0.060,
+        }
+    };
+
+    function getModelParams() {
+        const f = state.feedRate, k = state.killRate;
+        if (state.model === 'gray-scott') return { F: f, k: k };
+        if (state.model === 'brusselator') return { A: 1 + f * 30, B: k * 100 };
+        return { a: f * 5, b: k * 20 };
+    }
+
+    /* ===== STATE ===== */
+    const state = {
+        model: 'gray-scott',
+        colorScheme: 'fire',
+        animMode: 'standard',
+        feedRate: 0.055,
+        killRate: 0.062,
+        speed: 1.0,
+        paused: false,
+        kaleidoscope: false,
+        kaleidoFold: 8,
+        spawnPoints: [],
+        recording: false,
+        mediaRecorder: null,
+        recordedChunks: [],
+        frameCount: 0,
+        lastFpsTime: 0,
+        fps: 0,
+        pulseTimer: 0
+    };
+
+    /* ===== SIMULATION ARRAYS ===== */
+    let u = new Float32Array(SIM_W * SIM_H);
+    let v = new Float32Array(SIM_W * SIM_H);
+    let nextU = new Float32Array(SIM_W * SIM_H);
+    let nextV = new Float32Array(SIM_W * SIM_H);
+
+    /* ===== CANVAS SETUP ===== */
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = CANVAS_W;
+    canvas.height = CANVAS_H;
+
+    // Offscreen canvas for simulation rendering
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = SIM_W;
+    offCanvas.height = SIM_H;
+    const offCtx = offCanvas.getContext('2d');
+
+    // Temp canvas for kaleidoscope
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = CANVAS_W;
+    tempCanvas.height = CANVAS_H;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    /* ===== COLOR LOOKUP TABLE ===== */
+    let colorLUT = new Uint8Array(256 * 3); // 256 entries, RGB
+
+    function hexToRgb(hex) {
+        const val = parseInt(hex.slice(1), 16);
+        return [(val >> 16) & 255, (val >> 8) & 255, val & 255];
+    }
+
+    function buildColorLUT(schemeName) {
+        const hexPalette = palettes[schemeName];
+        const rgb = hexPalette.map(hexToRgb);
+        for (let i = 0; i < 256; i++) {
+            const t = i / 255;
+            const idx = t * (rgb.length - 1);
+            const lo = Math.floor(idx);
+            const hi = Math.min(lo + 1, rgb.length - 1);
+            const frac = idx - lo;
+            colorLUT[i * 3]     = rgb[lo][0] + frac * (rgb[hi][0] - rgb[lo][0]);
+            colorLUT[i * 3 + 1] = rgb[lo][1] + frac * (rgb[hi][1] - rgb[lo][1]);
+            colorLUT[i * 3 + 2] = rgb[lo][2] + frac * (rgb[hi][2] - rgb[lo][2]);
+        }
+    }
+
+    /* ===== SIMULATION INIT ===== */
+    function initGrid() {
+        const p = getModelParams();
+        if (state.model === 'gray-scott') {
+            u.fill(1.0);
+            v.fill(0.0);
+        } else if (state.model === 'brusselator') {
+            const u0 = p.A, v0 = p.B / p.A;
+            for (let i = 0; i < SIM_W * SIM_H; i++) {
+                u[i] = u0 + (Math.random() - 0.5) * 0.2;
+                v[i] = v0 + (Math.random() - 0.5) * 0.2;
+            }
+        } else {
+            const sum = p.a + p.b;
+            const u0 = sum, v0 = p.b / (sum * sum);
+            for (let i = 0; i < SIM_W * SIM_H; i++) {
+                u[i] = u0 + (Math.random() - 0.5) * 0.2;
+                v[i] = v0 + (Math.random() - 0.5) * 0.2;
+            }
+        }
+    }
+
+    function addSpawn(gx, gy, radius) {
+        radius = radius || 5;
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                if (dx * dx + dy * dy > radius * radius) continue;
+                const x = ((gx + dx) % SIM_W + SIM_W) % SIM_W;
+                const y = ((gy + dy) % SIM_H + SIM_H) % SIM_H;
+                const idx = y * SIM_W + x;
+                if (state.model === 'gray-scott') {
+                    u[idx] = 0.5 + (Math.random() - 0.5) * 0.04;
+                    v[idx] = 0.25 + (Math.random() - 0.5) * 0.04;
+                } else {
+                    u[idx] += (Math.random() - 0.2) * 2.0;
+                    v[idx] += (Math.random() - 0.2) * 2.0;
+                }
+            }
+        }
+    }
+
+    function seedDefaults() {
+        // Place a few default spawn points near center
+        const cx = Math.floor(SIM_W / 2);
+        const cy = Math.floor(SIM_H / 2);
+        const offsets = [
+            [0, 0], [-15, -10], [15, -10], [-15, 10], [15, 10],
+            [0, -20], [0, 20]
+        ];
+        state.spawnPoints = [];
+        offsets.forEach(([ox, oy]) => {
+            const gx = cx + ox;
+            const gy = cy + oy;
+            addSpawn(gx, gy, 5);
+            state.spawnPoints.push({ gx, gy });
+        });
+    }
+
+    /* ===== SIMULATION STEP ===== */
+    function simulateStep() {
+        const cfg = modelConfigs[state.model];
+        const p = getModelParams();
+        for (let sub = 0; sub < cfg.subSteps; sub++) {
+            doOneStep(cfg, p);
+        }
+    }
+
+    function doOneStep(cfg, p) {
+        const w = SIM_W, h = SIM_H;
+        const dU = cfg.Du, dV = cfg.Dv, dt = cfg.dt;
+        const model = state.model;
+
+        for (let y = 0; y < h; y++) {
+            const ym = ((y - 1 + h) % h) * w;
+            const yc = y * w;
+            const yp = ((y + 1) % h) * w;
+
+            for (let x = 0; x < w; x++) {
+                const xm = (x - 1 + w) % w;
+                const xp = (x + 1) % w;
+                const idx = yc + x;
+
+                const uC = u[idx], vC = v[idx];
+
+                const lapU = 0.05 * (u[ym + xm] + u[ym + xp] + u[yp + xm] + u[yp + xp])
+                           + 0.2  * (u[ym + x] + u[yp + x] + u[yc + xm] + u[yc + xp])
+                           - uC;
+                const lapV = 0.05 * (v[ym + xm] + v[ym + xp] + v[yp + xm] + v[yp + xp])
+                           + 0.2  * (v[ym + x] + v[yp + x] + v[yc + xm] + v[yc + xp])
+                           - vC;
+
+                let du, dv;
+
+                if (model === 'gray-scott') {
+                    const uvv = uC * vC * vC;
+                    du = dU * lapU - uvv + p.F * (1.0 - uC);
+                    dv = dV * lapV + uvv - (p.F + p.k) * vC;
+                } else if (model === 'brusselator') {
+                    const uuv = uC * uC * vC;
+                    du = dU * lapU + p.A - (p.B + 1) * uC + uuv;
+                    dv = dV * lapV + p.B * uC - uuv;
+                } else {
+                    const uuv = uC * uC * vC;
+                    du = dU * lapU + p.a - uC + uuv;
+                    dv = dV * lapV + p.b - uuv;
+                }
+
+                nextU[idx] = Math.max(-10, Math.min(50, uC + dt * du));
+                nextV[idx] = Math.max(-10, Math.min(50, vC + dt * dv));
+            }
+        }
+
+        const tmpU = u; u = nextU; nextU = tmpU;
+        const tmpV = v; v = nextV; nextV = tmpV;
+    }
+
+    /* ===== ANIMATION MODE EFFECTS ===== */
+    function applyAnimationEffects() {
+        if (state.animMode === 'pulse') {
+            state.pulseTimer++;
+            // Re-seed spawn points every 25 frames with large radius
+            if (state.pulseTimer % 25 === 0) {
+                state.spawnPoints.forEach(sp => addSpawn(sp.gx, sp.gy, 8));
+            }
+            // Also create expanding ring perturbations
+            if (state.pulseTimer % 8 === 0) {
+                const ringR = (state.pulseTimer % 80) * 0.5 + 3;
+                state.spawnPoints.forEach(sp => {
+                    for (let a = 0; a < Math.PI * 2; a += 0.15) {
+                        const rx = Math.round(sp.gx + Math.cos(a) * ringR);
+                        const ry = Math.round(sp.gy + Math.sin(a) * ringR);
+                        if (rx >= 0 && rx < SIM_W && ry >= 0 && ry < SIM_H) {
+                            const idx = ry * SIM_W + rx;
+                            if (state.model === 'gray-scott') {
+                                v[idx] = Math.min(1.0, v[idx] + 0.2);
+                            } else {
+                                u[idx] += (Math.random() - 0.3) * 1.5;
+                                v[idx] += (Math.random() - 0.3) * 1.5;
+                            }
+                        }
+                    }
+                });
+            }
+        } else if (state.animMode === 'chaotic') {
+            // Heavy random noise across many cells
+            const amp = state.model === 'gray-scott' ? 0.15 : 1.5;
+            for (let i = 0; i < 1500; i++) {
+                const idx = Math.floor(Math.random() * SIM_W * SIM_H);
+                u[idx] += (Math.random() - 0.5) * amp;
+                v[idx] += (Math.random() - 0.5) * amp;
+            }
+        } else if (state.animMode === 'spiral') {
+            // Global rotational advection applied to every cell
+            const cx = SIM_W / 2, cy = SIM_H / 2;
+            const strength = 0.07;
+            const uOld = new Float32Array(u);
+            const vOld = new Float32Array(v);
+            for (let y = 0; y < SIM_H; y++) {
+                for (let x = 0; x < SIM_W; x++) {
+                    const dx = x - cx, dy = y - cy;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 2) continue;
+                    // Sample from the rotational neighbor
+                    const nx = Math.round(x - dy / dist);
+                    const ny = Math.round(y + dx / dist);
+                    if (nx >= 0 && nx < SIM_W && ny >= 0 && ny < SIM_H) {
+                        const idx = y * SIM_W + x;
+                        const srcIdx = ny * SIM_W + nx;
+                        u[idx] += strength * (uOld[srcIdx] - uOld[idx]);
+                        v[idx] += strength * (vOld[srcIdx] - vOld[idx]);
+                    }
+                }
+            }
+        }
+    }
+
+    /* ===== RENDERING ===== */
+    function render() {
+        const imgData = offCtx.createImageData(SIM_W, SIM_H);
+        const data = imgData.data;
+        const total = SIM_W * SIM_H;
+
+        // Adaptive normalization: find actual min/max of v
+        let vMin = v[0], vMax = v[0];
+        for (let i = 1; i < total; i++) {
+            if (v[i] < vMin) vMin = v[i];
+            if (v[i] > vMax) vMax = v[i];
+        }
+        let vRange = vMax - vMin;
+        if (vRange < 0.001) vRange = 1;
+
+        for (let i = 0; i < total; i++) {
+            const val = Math.min(255, Math.max(0, Math.floor(((v[i] - vMin) / vRange) * 255)));
+            const li = val * 3;
+            data[i * 4]     = colorLUT[li];
+            data[i * 4 + 1] = colorLUT[li + 1];
+            data[i * 4 + 2] = colorLUT[li + 2];
+            data[i * 4 + 3] = 255;
+        }
+
+        offCtx.putImageData(imgData, 0, 0);
+
+        if (state.kaleidoscope) {
+            renderKaleidoscope();
+        } else {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(offCanvas, 0, 0, CANVAS_W, CANVAS_H);
+        }
+
+        // Draw spawn point indicators
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        state.spawnPoints.forEach(sp => {
+            const sx = (sp.gx / SIM_W) * CANVAS_W;
+            const sy = (sp.gy / SIM_H) * CANVAS_H;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    function renderKaleidoscope() {
+        // Scale simulation to temp canvas
+        tempCtx.imageSmoothingEnabled = true;
+        tempCtx.imageSmoothingQuality = 'high';
+        tempCtx.drawImage(offCanvas, 0, 0, CANVAS_W, CANVAS_H);
+
+        const cx = CANVAS_W / 2;
+        const cy = CANVAS_H / 2;
+        const folds = state.kaleidoFold;
+        const sliceAngle = (Math.PI * 2) / folds;
+        const maxR = Math.sqrt(cx * cx + cy * cy) + 10;
+
+        ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+        for (let i = 0; i < folds; i++) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(i * sliceAngle);
+            if (i % 2 === 1) {
+                ctx.scale(1, -1);
+            }
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(maxR, 0);
+            ctx.lineTo(maxR * Math.cos(sliceAngle), maxR * Math.sin(sliceAngle));
+            ctx.closePath();
+            ctx.clip();
+            ctx.translate(-cx, -cy);
+            ctx.drawImage(tempCanvas, 0, 0);
+            ctx.restore();
+        }
+    }
+
+    /* ===== MAIN LOOP ===== */
+    let animId;
+
+    function animate(timestamp) {
+        animId = requestAnimationFrame(animate);
+
+        // FPS counter
+        state.frameCount++;
+        if (timestamp - state.lastFpsTime >= 1000) {
+            state.fps = state.frameCount;
+            state.frameCount = 0;
+            state.lastFpsTime = timestamp;
+            document.getElementById('fpsDisplay').textContent = 'FPS: ' + state.fps;
+        }
+
+        if (!state.paused && state.animMode !== 'freeze') {
+            // Apply animation effects once per frame (before stepping)
+            applyAnimationEffects();
+            const steps = Math.max(1, Math.round(5 * state.speed));
+            for (let s = 0; s < steps; s++) {
+                simulateStep();
+            }
+        }
+
+        render();
+    }
+
+    /* ===== SAVE FUNCTIONALITY ===== */
+    function saveImage() {
+        // Render at 4x display resolution for high-quality export
+        const scale = 4;
+        const hiW = CANVAS_W * scale;
+        const hiH = CANVAS_H * scale;
+
+        const hiCanvas = document.createElement('canvas');
+        hiCanvas.width = hiW;
+        hiCanvas.height = hiH;
+        const hiCtx = hiCanvas.getContext('2d');
+
+        if (state.kaleidoscope) {
+            // Scale sim grid up to hi-res, then apply kaleidoscope
+            const scaledCanvas = document.createElement('canvas');
+            scaledCanvas.width = hiW;
+            scaledCanvas.height = hiH;
+            const scaledCtx = scaledCanvas.getContext('2d');
+            scaledCtx.imageSmoothingEnabled = true;
+            scaledCtx.imageSmoothingQuality = 'high';
+            scaledCtx.drawImage(offCanvas, 0, 0, hiW, hiH);
+
+            const cx = hiW / 2, cy = hiH / 2;
+            const folds = state.kaleidoFold;
+            const sliceAngle = (Math.PI * 2) / folds;
+            const maxR = Math.sqrt(cx * cx + cy * cy) + 10;
+            hiCtx.clearRect(0, 0, hiW, hiH);
+            for (let i = 0; i < folds; i++) {
+                hiCtx.save();
+                hiCtx.translate(cx, cy);
+                hiCtx.rotate(i * sliceAngle);
+                if (i % 2 === 1) hiCtx.scale(1, -1);
+                hiCtx.beginPath();
+                hiCtx.moveTo(0, 0);
+                hiCtx.lineTo(maxR, 0);
+                hiCtx.lineTo(maxR * Math.cos(sliceAngle), maxR * Math.sin(sliceAngle));
+                hiCtx.closePath();
+                hiCtx.clip();
+                hiCtx.translate(-cx, -cy);
+                hiCtx.drawImage(scaledCanvas, 0, 0);
+                hiCtx.restore();
+            }
+        } else {
+            hiCtx.imageSmoothingEnabled = true;
+            hiCtx.imageSmoothingQuality = 'high';
+            hiCtx.drawImage(offCanvas, 0, 0, hiW, hiH);
+        }
+
+        // Spawn point indicators at hi-res
+        hiCtx.fillStyle = 'rgba(255,255,255,0.3)';
+        state.spawnPoints.forEach(sp => {
+            const sx = (sp.gx / SIM_W) * hiW;
+            const sy = (sp.gy / SIM_H) * hiH;
+            hiCtx.beginPath();
+            hiCtx.arc(sx, sy, 4 * scale, 0, Math.PI * 2);
+            hiCtx.fill();
+        });
+
+        const link = document.createElement('a');
+        link.download = 'turing-pattern.png';
+        link.href = hiCanvas.toDataURL('image/png');
+        link.click();
+    }
+
+    function startRecording() {
+        // Record at 60fps with high bitrate for quality
+        const stream = canvas.captureStream(60);
+        let mimeType = 'video/webm;codecs=vp9';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'video/webm';
+        }
+        state.recordedChunks = [];
+        const recorder = new MediaRecorder(stream, {
+            mimeType: mimeType,
+            videoBitsPerSecond: 10000000 // 10 Mbps
+        });
+        recorder.ondataavailable = function (e) {
+            if (e.data.size > 0) state.recordedChunks.push(e.data);
+        };
+        recorder.onstop = function () {
+            const blob = new Blob(state.recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'turing-pattern.webm';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            state.recording = false;
+            updateRecordingUI();
+        };
+        recorder.start();
+        state.mediaRecorder = recorder;
+        state.recording = true;
+        updateRecordingUI();
+    }
+
+    function stopRecording() {
+        if (state.mediaRecorder && state.recording) {
+            state.mediaRecorder.stop();
+        }
+    }
+
+    function updateRecordingUI() {
+        const statusEl = document.getElementById('recordingStatus');
+        const videoBtn = document.getElementById('saveVideoBtn');
+        if (state.recording) {
+            statusEl.innerHTML = '<span class="recording-dot"></span> Recording... Click again to stop and download.';
+            videoBtn.textContent = 'Stop Recording';
+            videoBtn.classList.add('active');
+        } else {
+            statusEl.textContent = '';
+            videoBtn.textContent = 'Save as Video (.webm)';
+            videoBtn.classList.remove('active');
+        }
+    }
+
+    /* ===== THEME ===== */
+    function applyTheme(scheme) {
+        const t = themes[scheme];
+        document.documentElement.style.setProperty('--bg-primary', t.bgP);
+        document.documentElement.style.setProperty('--bg-secondary', t.bgS);
+        document.documentElement.style.setProperty('--accent', t.accent);
+    }
+
+    /* ===== UI WIRING ===== */
+    function init() {
+        buildColorLUT(state.colorScheme);
+        applyTheme(state.colorScheme);
+        initGrid();
+        seedDefaults();
+
+        // Hide loader after first render
+        requestAnimationFrame(() => {
+            render();
+            document.getElementById('loader').classList.add('hidden');
+        });
+
+        // Start animation loop
+        animId = requestAnimationFrame(animate);
+
+        // --- Canvas click ---
+        canvas.addEventListener('click', function (e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = SIM_W / rect.width;
+            const scaleY = SIM_H / rect.height;
+            const gx = Math.floor((e.clientX - rect.left) * scaleX);
+            const gy = Math.floor((e.clientY - rect.top) * scaleY);
+            addSpawn(gx, gy, 5);
+            state.spawnPoints.push({ gx, gy });
+        });
+
+        // Touch support
+        canvas.addEventListener('touchend', function (e) {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = SIM_W / rect.width;
+            const scaleY = SIM_H / rect.height;
+            const gx = Math.floor((touch.clientX - rect.left) * scaleX);
+            const gy = Math.floor((touch.clientY - rect.top) * scaleY);
+            addSpawn(gx, gy, 5);
+            state.spawnPoints.push({ gx, gy });
+        });
+
+        // --- Model select ---
+        document.getElementById('modelSelect').addEventListener('change', function (e) {
+            state.model = e.target.value;
+            const cfg = modelConfigs[state.model];
+            state.feedRate = cfg.defaultFeed;
+            state.killRate = cfg.defaultKill;
+            document.getElementById('feedSlider').value = cfg.defaultFeed;
+            document.getElementById('killSlider').value = cfg.defaultKill;
+            document.getElementById('feedVal').textContent = cfg.defaultFeed.toFixed(3);
+            document.getElementById('killVal').textContent = cfg.defaultKill.toFixed(3);
+            initGrid();
+            seedDefaults();
+        });
+
+        // --- Color scheme buttons ---
+        document.querySelectorAll('.color-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.color-btn').forEach(function (b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                state.colorScheme = btn.dataset.scheme;
+                buildColorLUT(state.colorScheme);
+                applyTheme(state.colorScheme);
+            });
+        });
+
+        // --- Pause/Resume ---
+        document.getElementById('pauseBtn').addEventListener('click', function () {
+            state.paused = !state.paused;
+            this.textContent = state.paused ? 'Resume' : 'Pause';
+            this.classList.toggle('active', state.paused);
+        });
+
+        // --- Reset ---
+        document.getElementById('resetBtn').addEventListener('click', function () {
+            initGrid();
+            // Re-add existing spawn points
+            state.spawnPoints.forEach(function (sp) { addSpawn(sp.gx, sp.gy, 5); });
+        });
+
+        // --- Clear All ---
+        document.getElementById('clearBtn').addEventListener('click', function () {
+            state.spawnPoints = [];
+            initGrid();
+        });
+
+        // --- Save modal ---
+        document.getElementById('saveBtn').addEventListener('click', function () {
+            document.getElementById('saveModal').classList.add('open');
+        });
+
+        document.getElementById('closeModalBtn').addEventListener('click', function () {
+            document.getElementById('saveModal').classList.remove('open');
+        });
+
+        document.getElementById('saveModal').addEventListener('click', function (e) {
+            if (e.target === this) this.classList.remove('open');
+        });
+
+        document.getElementById('saveImageBtn').addEventListener('click', function () {
+            saveImage();
+        });
+
+        document.getElementById('saveVideoBtn').addEventListener('click', function () {
+            if (state.recording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        // --- Sliders ---
+        document.getElementById('feedSlider').addEventListener('input', function () {
+            state.feedRate = parseFloat(this.value);
+            document.getElementById('feedVal').textContent = state.feedRate.toFixed(3);
+        });
+
+        document.getElementById('killSlider').addEventListener('input', function () {
+            state.killRate = parseFloat(this.value);
+            document.getElementById('killVal').textContent = state.killRate.toFixed(3);
+        });
+
+        document.getElementById('speedSlider').addEventListener('input', function () {
+            state.speed = parseFloat(this.value);
+            document.getElementById('speedVal').textContent = state.speed.toFixed(1) + 'x';
+        });
+
+        // --- Animation mode ---
+        document.getElementById('animSelect').addEventListener('change', function (e) {
+            state.animMode = e.target.value;
+            const stepBtn = document.getElementById('stepBtn');
+            if (state.animMode === 'freeze') {
+                state.paused = false;
+                stepBtn.classList.add('visible');
+            } else {
+                stepBtn.classList.remove('visible');
+            }
+        });
+
+        // --- Step button (freeze-frame) ---
+        document.getElementById('stepBtn').addEventListener('click', function () {
+            applyAnimationEffects();
+            simulateStep();
+            render();
+        });
+
+        // --- Kaleidoscope ---
+        document.getElementById('kaleidoBtn').addEventListener('click', function () {
+            state.kaleidoscope = !state.kaleidoscope;
+            this.textContent = 'Kaleidoscope: ' + (state.kaleidoscope ? 'ON' : 'OFF');
+            this.classList.toggle('active', state.kaleidoscope);
+        });
+
+        document.getElementById('kaleidoSymmetry').addEventListener('change', function (e) {
+            state.kaleidoFold = parseInt(e.target.value);
+        });
+
+        // --- Keyboard shortcuts ---
+        document.addEventListener('keydown', function (e) {
+            if (e.code === 'Space' && e.target === document.body) {
+                e.preventDefault();
+                document.getElementById('pauseBtn').click();
+            }
+        });
+    }
+
+    // Go
+    init();
+
+})();
+</script>
+</body>
+</html>
