@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧁 Should I Treat Myself? — Decision Neuron</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#111115;--surface:#1a1a20;--surface2:#222228;--surface3:#2c2c34;--border:#333340;
+  --accent:#ff69b4;--accent2:#d946ef;--accent-glow:rgba(255,105,180,0.15);
+  --text:#eaeaf0;--text-dim:#78788a;
+  --radius:14px;
+  --font-display:'Bricolage Grotesque',sans-serif;--font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:#333;border-radius:3px;}
+.header{text-align:center;padding:36px 20px 14px;}
+.header h1{
+  font-family:var(--font-display);font-size:clamp(1.8rem,5vw,3rem);font-weight:800;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;letter-spacing:-0.5px;transition:all 0.6s;
+}
+.header p{font-size:0.9rem;color:var(--text-dim);margin-top:4px;}
+.tabs{display:flex;justify-content:center;gap:5px;padding:8px 16px;flex-wrap:wrap;}
+.tab-btn{
+  font-family:var(--font-body);font-size:0.8rem;font-weight:600;padding:8px 16px;
+  border:1.5px solid var(--border);border-radius:30px;background:transparent;
+  color:var(--text-dim);cursor:pointer;transition:all 0.3s;
+}
+.tab-btn:hover{border-color:var(--accent);color:var(--text);}
+.tab-btn.active{background:var(--accent-glow);border-color:var(--accent);color:var(--text);}
+.container{max-width:1100px;margin:0 auto;padding:16px;}
+.panel{display:none;animation:fadeIn 0.35s ease;}.panel.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px;margin-bottom:14px;position:relative;overflow:hidden;
+}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:background 0.5s;}
+.card-title{font-family:var(--font-display);font-size:1rem;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;color:var(--accent);transition:color 0.5s;}
+.slider-group{margin-bottom:16px;}
+.slider-label{display:flex;justify-content:space-between;align-items:center;font-size:0.84rem;margin-bottom:5px;}
+.slider-label .name{font-weight:500;}
+.slider-label .val{font-family:var(--font-mono);font-size:0.76rem;color:var(--accent);background:var(--accent-glow);padding:2px 8px;border-radius:6px;}
+.weight-badge{display:inline-block;font-family:var(--font-mono);font-size:0.68rem;padding:2px 7px;border-radius:8px;margin-left:5px;}
+.weight-pos{background:rgba(52,211,153,0.12);color:#34d399;}
+.weight-neg{background:rgba(244,63,94,0.12);color:#f43f5e;}
+input[type="range"]{-webkit-appearance:none;width:100%;height:5px;border-radius:3px;background:var(--border);outline:none;cursor:pointer;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:grab;transition:all 0.3s;}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2);}
+.neuron-output{text-align:center;padding:26px 16px;}
+.neuron-circle{width:130px;height:130px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;flex-direction:column;border:3px solid var(--accent);transition:all 0.5s;}
+.neuron-circle .prob{font-family:var(--font-display);font-size:1.9rem;font-weight:800;}
+.neuron-circle .label{font-size:0.72rem;font-weight:600;margin-top:2px;}
+.decision-text{font-family:var(--font-display);font-size:1.3rem;font-weight:800;margin-top:8px;transition:color 0.4s;}
+.celebration{font-size:2rem;margin-top:6px;animation:bounce 0.5s ease infinite alternate;}
+@keyframes bounce{from{transform:translateY(0);}to{transform:translateY(-6px);}}
+.math-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;font-family:var(--font-mono);font-size:0.74rem;line-height:1.8;overflow-x:auto;color:var(--text-dim);}
+.math-box .hl{color:var(--accent);font-weight:500;}
+.math-box .hl2{color:var(--accent2);font-weight:500;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:780px){.grid-2{grid-template-columns:1fr;}}
+canvas{width:100%;border-radius:10px;background:var(--bg);border:1px solid var(--border);}
+.btn{font-family:var(--font-body);font-weight:600;font-size:0.82rem;padding:9px 20px;border-radius:9px;border:none;cursor:pointer;transition:all 0.3s;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 4px 18px var(--accent-glow);}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-secondary:hover{background:var(--surface3);}
+.btn-group{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;}
+select{font-family:var(--font-body);font-size:0.82rem;padding:7px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;outline:none;}
+.scenario-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.scenario-card{background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all 0.3s;}
+.scenario-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.scenario-card.active{border-color:var(--accent);box-shadow:0 0 16px var(--accent-glow);}
+.scenario-emoji{font-size:2rem;margin-bottom:4px;}
+.scenario-name{font-family:var(--font-display);font-weight:600;font-size:0.82rem;}
+.act-opt{flex:1;padding:10px;background:var(--bg);border:2px solid var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all 0.3s;font-family:var(--font-body);color:var(--text);}
+.act-opt:hover{border-color:var(--accent);}
+.act-opt.active{border-color:var(--accent);background:var(--accent-glow);}
+.act-opt .fn-name{font-weight:700;font-size:0.85rem;}
+.act-opt .fn-year{font-size:0.65rem;color:var(--text-dim);}
+.training-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin:10px 0;}
+.stat-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;}
+.stat-box .stat-val{font-family:var(--font-display);font-size:1.2rem;font-weight:800;color:var(--accent);}
+.stat-box .stat-label{font-size:0.67rem;color:var(--text-dim);margin-top:2px;}
+.label-btn{font-family:var(--font-body);font-size:0.8rem;font-weight:600;padding:7px 16px;border-radius:9px;border:2px solid;cursor:pointer;transition:all 0.3s;background:transparent;}
+.label-btn.yes{border-color:#34d399;color:#34d399;}.label-btn.yes.active{background:#34d399;color:var(--bg);}
+.label-btn.no{border-color:#f43f5e;color:#f43f5e;}.label-btn.no.active{background:#f43f5e;color:white;}
+.chain-visual{display:flex;align-items:center;justify-content:center;gap:14px;padding:16px;flex-wrap:wrap;}
+.chain-neuron{width:85px;height:85px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;border:3px solid;font-family:var(--font-mono);font-size:0.72rem;transition:all 0.5s;}
+.chain-arrow{font-size:1.3rem;color:var(--accent);animation:pulse 1.8s infinite;}
+@keyframes pulse{0%,100%{opacity:0.4;}50%{opacity:1;}}
+.sens-bar{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+.sens-bar .bar-label{width:110px;font-size:0.78rem;font-weight:600;text-align:right;flex-shrink:0;}
+.sens-bar .bar-track{flex:1;height:18px;background:var(--bg);border-radius:9px;overflow:hidden;}
+.sens-bar .bar-fill{height:100%;border-radius:9px;transition:width 0.5s;}
+.toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.toggle{width:42px;height:22px;border-radius:11px;background:var(--border);position:relative;cursor:pointer;transition:background 0.3s;flex-shrink:0;}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:white;transition:transform 0.3s;}
+.toggle.on::after{transform:translateX(20px);}
+.footer{text-align:center;padding:28px 20px;color:#555;font-size:0.72rem;}
+.info-text{font-size:0.78rem;color:var(--text-dim);line-height:1.5;margin-bottom:10px;}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 id="main-title">🧁 Should I Treat Myself?</h1>
+  <p>A single neuron weighs your factors and makes the call</p>
+</div>
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('neuron',this)">🧠 Neuron</button>
+  <button class="tab-btn" onclick="switchTab('boundary',this)">🗺️ Boundary</button>
+  <button class="tab-btn" onclick="switchTab('training',this)">🎯 Training</button>
+  <button class="tab-btn" onclick="switchTab('scenarios',this)">🎭 Scenarios</button>
+  <button class="tab-btn" onclick="switchTab('activation',this)">⚡ Activations</button>
+  <button class="tab-btn" onclick="switchTab('chain',this)">🔗 Chain</button>
+  <button class="tab-btn" onclick="switchTab('sensitivity',this)">📊 Sensitivity</button>
+</div>
+<div class="container">
+
+<!-- NEURON -->
+<div class="panel active" id="panel-neuron"><div class="grid-2"><div>
+  <div class="card"><div class="card-title">🎛️ Input Factors</div><div id="sliders-container"></div></div>
+  <div class="card"><div class="card-title">⚖️ Bias: <span id="bias-name">Treat-Yourself Energy</span></div>
+    <div class="slider-group"><div class="slider-label"><span class="name" id="bias-label-text">Default tendency to indulge</span><span class="val" id="bias-val">0.00</span></div>
+    <input type="range" id="bias-slider" min="-3" max="3" step="0.1" value="0" oninput="updateNeuron()"></div>
+    <p class="info-text">Positive = naturally inclined. Negative = naturally restrained.</p></div>
+  <div class="card"><div class="card-title">🔢 Math Breakdown</div><div class="math-box" id="math-display"></div></div>
+</div><div>
+  <div class="card"><div class="neuron-output">
+    <div class="neuron-circle" id="neuron-circle"><span class="prob" id="neuron-prob">50%</span><span class="label" id="neuron-label">Uncertain</span></div>
+    <div class="decision-text" id="decision-text">Hmm...</div><div class="celebration" id="celebration"></div>
+  </div></div>
+  <div class="card"><div class="card-title">📐 Sigmoid Curve</div><canvas id="sigmoid-canvas" height="200"></canvas></div>
+</div></div></div>
+
+<!-- BOUNDARY -->
+<div class="panel" id="panel-boundary"><div class="card">
+  <div class="card-title">🗺️ Decision Boundary Visualizer</div>
+  <p class="info-text">2D heatmap of the neuron's decision. Gold line = 50/50 boundary. Dot = your current position.</p>
+  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+    <div><label class="info-text">X Axis</label><select id="boundary-x" onchange="drawBoundary()"></select></div>
+    <div><label class="info-text">Y Axis</label><select id="boundary-y" onchange="drawBoundary()"></select></div>
+  </div>
+  <canvas id="boundary-canvas" height="400"></canvas>
+</div></div>
+
+<!-- TRAINING -->
+<div class="panel" id="panel-training"><div class="grid-2"><div><div class="card">
+  <div class="card-title">🎯 Training Mode</div>
+  <p class="info-text">Click on the plot to add labeled examples, then train the neuron to learn the pattern!</p>
+  <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+    <span style="font-size:0.82rem;font-weight:600;">Label:</span>
+    <button class="label-btn yes active" id="label-yes" onclick="setTrainLabel(1)">✓ Yes</button>
+    <button class="label-btn no" id="label-no" onclick="setTrainLabel(0)">✗ No</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+    <span class="info-text" style="margin:0;">X:</span><select id="train-x" onchange="drawTraining()"></select>
+    <span class="info-text" style="margin:0;">Y:</span><select id="train-y" onchange="drawTraining()"></select>
+  </div>
+  <canvas id="training-canvas" height="380" style="cursor:crosshair;"></canvas>
+</div></div><div>
+  <div class="card"><div class="card-title">📈 Training Controls</div>
+    <div class="training-stats">
+      <div class="stat-box"><div class="stat-val" id="train-step-count">0</div><div class="stat-label">Steps</div></div>
+      <div class="stat-box"><div class="stat-val" id="train-accuracy">—</div><div class="stat-label">Accuracy</div></div>
+      <div class="stat-box"><div class="stat-val" id="train-points-count">0</div><div class="stat-label">Points</div></div>
+    </div>
+    <div class="slider-group"><div class="slider-label"><span class="name">Learning Rate</span><span class="val" id="lr-val">0.50</span></div>
+      <input type="range" id="train-lr" min="0.01" max="2" step="0.01" value="0.5" oninput="document.getElementById('lr-val').textContent=parseFloat(this.value).toFixed(2)"></div>
+    <div class="slider-group"><div class="slider-label"><span class="name">Auto-train speed (ms)</span><span class="val" id="speed-val">200</span></div>
+      <input type="range" id="train-speed" min="20" max="500" step="10" value="200" oninput="document.getElementById('speed-val').textContent=this.value"></div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="trainStep()">Step</button>
+      <button class="btn btn-primary" id="auto-train-btn" onclick="toggleAutoTrain()">▶ Auto</button>
+      <button class="btn btn-secondary" onclick="resetTraining()">Reset</button>
+      <button class="btn btn-secondary" onclick="loadPreset()">Load Preset</button>
+    </div>
+  </div>
+  <div class="card"><div class="card-title">⚖️ Learned Weights</div><div class="math-box" id="train-weights-display"></div></div>
+</div></div></div>
+
+<!-- SCENARIOS -->
+<div class="panel" id="panel-scenarios"><div class="card">
+  <div class="card-title">🎭 Multi-Scenario Neuron</div>
+  <p class="info-text">The neuron is a general-purpose decision machine. Pick a scenario and the UI adapts!</p>
+  <div class="scenario-grid" id="scenario-grid"></div>
+</div></div>
+
+<!-- ACTIVATIONS -->
+<div class="panel" id="panel-activation"><div class="grid-2"><div class="card">
+  <div class="card-title">⚡ Activation Function Showdown</div>
+  <p class="info-text">Compare activation functions from neural network history.</p>
+  <div style="display:flex;gap:8px;margin-bottom:14px;">
+    <div class="act-opt active" id="af-sigmoid" onclick="setActivation('sigmoid')"><div class="fn-name">Sigmoid</div><div class="fn-year">Classic</div></div>
+    <div class="act-opt" id="af-step" onclick="setActivation('step')"><div class="fn-name">Step</div><div class="fn-year">1958</div></div>
+    <div class="act-opt" id="af-relu" onclick="setActivation('relu')"><div class="fn-name">ReLU</div><div class="fn-year">Modern</div></div>
+  </div>
+  <div class="toggle-row"><div class="toggle" id="compare-toggle" onclick="toggleCompare()"></div><span style="font-size:0.82rem;">Compare all three</span></div>
+  <canvas id="activation-canvas" height="260"></canvas>
+</div><div>
+  <div class="card"><div class="card-title">📊 Current Output</div>
+    <div class="neuron-output" style="padding:20px;">
+      <div class="neuron-circle" id="act-neuron" style="width:100px;height:100px;"><span class="prob" id="act-prob" style="font-size:1.3rem;">50%</span></div>
+      <div id="act-fn-name" style="font-family:var(--font-display);font-size:0.95rem;font-weight:600;margin-top:6px;">Sigmoid</div>
+    </div></div>
+  <div class="card"><div class="card-title">🔢 Function Math</div><div class="math-box" id="act-math"></div></div>
+</div></div></div>
+
+<!-- CHAIN -->
+<div class="panel" id="panel-chain">
+  <div class="card"><div class="card-title">🔗 Two-Neuron Chain</div>
+    <p class="info-text">Neuron 1 feeds into Neuron 2 with new factors — the smallest possible network!</p>
+    <div class="chain-visual" id="chain-visual"></div></div>
+  <div class="grid-2"><div class="card"><div class="card-title">⛓️ Chain Settings</div>
+    <div class="slider-group"><div class="slider-label"><span class="name">Connection Weight (N1→N2)</span><span class="val" id="cw-val">1.50</span></div><input type="range" id="chain-w" min="-3" max="3" step="0.1" value="1.5" oninput="updateChain()"></div>
+    <div class="slider-group"><div class="slider-label"><span class="name">💰 Budget Available</span><span class="val" id="cb-val">0.50</span></div><input type="range" id="chain-bud" min="0" max="1" step="0.01" value="0.5" oninput="updateChain()"></div>
+    <div class="slider-group"><div class="slider-label"><span class="name">👫 Friend Available</span><span class="val" id="cf-val">0.50</span></div><input type="range" id="chain-fri" min="0" max="1" step="0.01" value="0.5" oninput="updateChain()"></div>
+    <div class="slider-group"><div class="slider-label"><span class="name">⚖️ Neuron 2 Bias</span><span class="val" id="cb2-val">0.00</span></div><input type="range" id="chain-b2" min="-3" max="3" step="0.1" value="0" oninput="updateChain()"></div>
+  </div>
+  <div class="card"><div class="card-title">🔢 Chain Math</div><div class="math-box" id="chain-math"></div></div></div>
+</div>
+
+<!-- SENSITIVITY -->
+<div class="panel" id="panel-sensitivity"><div class="grid-2">
+  <div class="card"><div class="card-title">📊 Sensitivity Sweep</div>
+    <p class="info-text">Each line sweeps one input 0→1. Steeper = more influential.</p>
+    <canvas id="sens-canvas" height="320"></canvas></div>
+  <div class="card"><div class="card-title">📊 Influence Ranking</div>
+    <p class="info-text">Inputs ranked by how much they swing the output.</p>
+    <div id="sens-bars"></div></div>
+</div></div>
+
+</div>
+<div class="footer">Built with 🧠 — A single neuron decision machine | Frontiers of Tech Code Quest</div>
+
+<script id="app-script">
+// === HELPERS ===
+function h2r(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');return[parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)];}
+function sig(z){return 1/(1+Math.exp(-z));}
+function stepF(z){return z>=0?1:0;}
+function reluF(z){return Math.max(0,z);}
+function compZ(v,w,b){let z=b;v.forEach((x,i)=>z+=x*w[i]);return z;}
+function gAcc(){return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();}
+function gAcc2(){return getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim();}
+
+// === SCENARIOS ===
+const S={
+  treat:{emoji:'🧁',name:'Should I Treat Myself?',yes:'Treat Yo\u2019self!',no:'Save it for later.',celeb:'🧁🎉✨🍰🥳',
+    bn:'Treat-Yourself Energy',bl:'Default tendency to indulge',
+    t:{a:'#ff69b4',a2:'#d946ef',g:'rgba(255,105,180,0.15)'},
+    inp:[{n:'How Bad the Week Was',e:'😤',w:0.9},{n:'Accomplishments This Week',e:'🏆',w:1.2},{n:'Point in the Week',e:'📅',w:0.6},{n:'Current Mood',e:'😊',w:-0.7}]},
+  college:{emoji:'🎓',name:'Choose This College?',yes:'Enroll!',no:'Keep looking.',celeb:'🎓🎉📚🏫✨',
+    bn:'Decision Eagerness',bl:'Eagerness to commit',
+    t:{a:'#5b9dff',a2:'#38bdf8',g:'rgba(91,157,255,0.15)'},
+    inp:[{n:'Academic Reputation',e:'📖',w:1.3},{n:'Affordability',e:'💰',w:1.0},{n:'Campus Vibe',e:'🌳',w:0.7},{n:'Distance from Home',e:'🏠',w:-0.5}]},
+  pet:{emoji:'🐕',name:'Adopt a Pet?',yes:'Adopt!',no:'Not yet.',celeb:'🐕🐾❤️🎉🦴',
+    bn:'Pet Love Level',bl:'How much you want a furry friend',
+    t:{a:'#f59e0b',a2:'#fb923c',g:'rgba(245,158,11,0.15)'},
+    inp:[{n:'Free Time Available',e:'⏰',w:1.1},{n:'Living Space',e:'🏠',w:0.8},{n:'Allergies',e:'🤧',w:-1.5},{n:'Loneliness',e:'😔',w:0.9}]},
+  roadtrip:{emoji:'🚗',name:'Road Trip?',yes:"Let's go!",no:'Stay home.',celeb:'🚗🛣️🌅🎉✨',
+    bn:'Wanderlust',bl:'Your adventurous spirit',
+    t:{a:'#34d399',a2:'#67e8f9',g:'rgba(52,211,153,0.15)'},
+    inp:[{n:'Weather Forecast',e:'☀️',w:0.8},{n:'Gas Money',e:'⛽',w:1.0},{n:'Work Obligations',e:'💼',w:-1.2},{n:'Friends Available',e:'👫',w:0.9}]},
+  tech:{emoji:'💻',name:'Buy This Tech?',yes:'Buy it!',no:'Pass.',celeb:'💻🎮📱🎉✨',
+    bn:'Impulse Buy Tendency',bl:'Tech enthusiasm level',
+    t:{a:'#a0a0b0',a2:'#d4d4d8',g:'rgba(160,160,176,0.12)'},
+    inp:[{n:'Need Level',e:'📋',w:1.3},{n:'Price',e:'💸',w:-1.1},{n:'Review Score',e:'⭐',w:0.9},{n:'Current Device Age',e:'📅',w:0.7}]}
+};
+
+// === STATE ===
+let cur='treat',actFn='sigmoid',cmpMode=false,tLabel=1,tPts=[],tW=[],tB=0,tSteps=0,autoI=null;
+
+// === THEME ===
+function applyTheme(t){const r=document.documentElement.style;r.setProperty('--accent',t.a);r.setProperty('--accent2',t.a2);r.setProperty('--accent-glow',t.g);}
+
+// === LOAD SCENARIO ===
+function loadScenario(k){
+  cur=k;const s=S[k];applyTheme(s.t);
+  document.getElementById('main-title').textContent=s.emoji+' '+s.name;
+  document.getElementById('bias-name').textContent=s.bn;
+  document.getElementById('bias-label-text').textContent=s.bl;
+  document.getElementById('bias-slider').value=0;
+  buildSliders(s.inp);popSel();popGrid();
+  tW=s.inp.map(()=>(Math.random()-0.5)*0.5);tB=0;tSteps=0;tPts=[];
+  if(autoI){clearInterval(autoI);autoI=null;document.getElementById('auto-train-btn').textContent='▶ Auto';}
+  document.getElementById('train-step-count').textContent='0';
+  document.getElementById('train-accuracy').textContent='—';
+  document.getElementById('train-points-count').textContent='0';
+  updateNeuron();
+}
+
+function popGrid(){
+  const g=document.getElementById('scenario-grid');g.innerHTML='';
+  Object.entries(S).forEach(([k,s])=>{const d=document.createElement('div');d.className='scenario-card'+(k===cur?' active':'');
+    d.onclick=()=>loadScenario(k);d.innerHTML=`<div class="scenario-emoji">${s.emoji}</div><div class="scenario-name">${s.name}</div>`;g.appendChild(d);});
+}
+
+function buildSliders(inp){
+  const c=document.getElementById('sliders-container');c.innerHTML='';
+  inp.forEach((x,i)=>{c.innerHTML+=`<div class="slider-group"><div class="slider-label"><span class="name">${x.e} ${x.n}<span class="weight-badge ${x.w>=0?'weight-pos':'weight-neg'}">w=${x.w>=0?'+':''}${x.w.toFixed(1)}</span></span><span class="val" id="iv-${i}">0.50</span></div><input type="range" id="inp-${i}" min="0" max="1" step="0.01" value="0.5" oninput="updateNeuron()"></div>`;});
+}
+
+function popSel(){
+  const s=S[cur];['boundary-x','boundary-y','train-x','train-y'].forEach(id=>{const sel=document.getElementById(id);sel.innerHTML='';
+    s.inp.forEach((x,i)=>{const o=document.createElement('option');o.value=i;o.textContent=x.e+' '+x.n;sel.appendChild(o);});});
+  document.getElementById('boundary-x').value=0;document.getElementById('boundary-y').value=1;
+  document.getElementById('train-x').value=0;document.getElementById('train-y').value=1;
+}
+
+// === NEURON ===
+function gI(){return S[cur].inp.map((_,i)=>parseFloat(document.getElementById('inp-'+i).value));}
+function act(z){if(actFn==='sigmoid')return sig(z);if(actFn==='step')return stepF(z);return Math.min(reluF(z),1);}
+
+function updateNeuron(){
+  const s=S[cur],vals=gI(),bias=parseFloat(document.getElementById('bias-slider').value),ws=s.inp.map(x=>x.w);
+  vals.forEach((v,i)=>document.getElementById('iv-'+i).textContent=v.toFixed(2));
+  document.getElementById('bias-val').textContent=bias.toFixed(2);
+  const z=compZ(vals,ws,bias),prob=act(z),pct=(prob*100).toFixed(1),isY=prob>=0.5;
+  const col=isY?'var(--accent)':'var(--accent2)',rgb=h2r(isY?gAcc():gAcc2()),gA=isY?prob*0.2:(1-prob)*0.2;
+  const ci=document.getElementById('neuron-circle');
+  ci.style.borderColor=col;ci.style.background=`radial-gradient(circle,rgba(${rgb},${gA}) 0%,transparent 70%)`;
+  document.getElementById('neuron-prob').textContent=pct+'%';document.getElementById('neuron-prob').style.color=col;
+  const lbl=prob>0.7?'Confident Yes':prob<0.3?'Confident No':'Uncertain';
+  document.getElementById('neuron-label').textContent=lbl;document.getElementById('neuron-label').style.color=col;
+  document.getElementById('decision-text').textContent=isY?s.yes:s.no;document.getElementById('decision-text').style.color=col;
+  document.getElementById('celebration').textContent=prob>0.78?s.celeb:'';
+  let m='<span class="hl">z</span> = '+vals.map((v,i)=>`(${v.toFixed(2)} × <span class="hl">${ws[i].toFixed(1)}</span>)`).join(' + ')+` + <span class="hl2">${bias.toFixed(2)}</span>`;
+  m+=`<br><span class="hl">z = ${z.toFixed(3)}</span><br>σ(z) = <span class="hl">${prob.toFixed(4)}</span> → <span class="hl">${pct}%</span>`;
+  document.getElementById('math-display').innerHTML=m;
+  drawSig(z);drawBoundary();updateAct(z);updateChain();drawSens();
+}
+
+// === SIGMOID MINI ===
+function drawSig(cz){
+  const cv=document.getElementById('sigmoid-canvas'),cx=cv.getContext('2d');
+  cv.width=cv.offsetWidth*2;cv.height=400;cx.scale(2,2);const w=cv.offsetWidth,h=200;cx.clearRect(0,0,w,h);
+  cx.strokeStyle='rgba(255,255,255,0.04)';cx.lineWidth=1;
+  for(let i=0;i<=10;i++){cx.beginPath();cx.moveTo((i/10)*w,0);cx.lineTo((i/10)*w,h);cx.stroke();cx.beginPath();cx.moveTo(0,(i/10)*h);cx.lineTo(w,(i/10)*h);cx.stroke();}
+  cx.beginPath();cx.strokeStyle=gAcc();cx.lineWidth=2.5;
+  for(let p=0;p<w;p++){const z=((p/w)-0.5)*12,y=h-sig(z)*h;p===0?cx.moveTo(p,y):cx.lineTo(p,y);}cx.stroke();
+  const px=((cz/12)+0.5)*w,py=h-sig(cz)*h;
+  cx.beginPath();cx.arc(px,py,6,0,Math.PI*2);cx.fillStyle='#ffd700';cx.fill();cx.strokeStyle='white';cx.lineWidth=2;cx.stroke();
+  cx.fillStyle='#78788a';cx.font='11px "DM Mono"';cx.fillText('z='+cz.toFixed(2),Math.min(px+10,w-70),py-10);
+}
+
+// === BOUNDARY ===
+function drawBoundary(){
+  const cv=document.getElementById('boundary-canvas');if(!cv.offsetWidth)return;
+  const cx=cv.getContext('2d');cv.width=cv.offsetWidth*2;cv.height=800;cx.scale(2,2);
+  const w=cv.offsetWidth,h=400,s=S[cur],xI=+document.getElementById('boundary-x').value,yI=+document.getElementById('boundary-y').value;
+  const bias=parseFloat(document.getElementById('bias-slider').value),ws=s.inp.map(x=>x.w),vals=gI();
+  const c1=h2r(gAcc()),c2=h2r(gAcc2()),res=3;
+  for(let px=0;px<w;px+=res)for(let py=0;py<h;py+=res){
+    const xv=px/w,yv=1-(py/h),tv=[...vals];tv[xI]=xv;tv[yI]=yv;const p=sig(compZ(tv,ws,bias));
+    cx.fillStyle=`rgba(${Math.round(c1[0]*p+c2[0]*(1-p))},${Math.round(c1[1]*p+c2[1]*(1-p))},${Math.round(c1[2]*p+c2[2]*(1-p))},0.6)`;
+    cx.fillRect(px,py,res,res);}
+  cx.strokeStyle='#ffd700';cx.lineWidth=2.5;cx.setLineDash([6,4]);cx.beginPath();let st=false;
+  for(let px=0;px<w;px++){const xv=px/w;let ot=bias;vals.forEach((v,i)=>{if(i!==xI&&i!==yI)ot+=v*ws[i];});
+    const yv=-(ws[xI]*xv+ot)/(ws[yI]||0.001),py=(1-yv)*h;
+    if(py>=0&&py<=h){if(!st){cx.moveTo(px,py);st=true;}else cx.lineTo(px,py);}}
+  cx.stroke();cx.setLineDash([]);
+  const dx=vals[xI]*w,dy=(1-vals[yI])*h;
+  cx.beginPath();cx.arc(dx,dy,8,0,Math.PI*2);cx.fillStyle='#ffd700';cx.fill();cx.strokeStyle='white';cx.lineWidth=2;cx.stroke();
+  cx.fillStyle='#78788a';cx.font='12px "DM Sans"';cx.fillText(s.inp[xI].e+' '+s.inp[xI].n+' →',10,h-10);
+  cx.save();cx.translate(14,h-20);cx.rotate(-Math.PI/2);cx.fillText(s.inp[yI].e+' '+s.inp[yI].n+' →',0,0);cx.restore();
+}
+
+// === ACTIVATIONS ===
+function setActivation(fn){actFn=fn;['sigmoid','step','relu'].forEach(f=>document.getElementById('af-'+f).classList.toggle('active',f===fn));updateNeuron();}
+function toggleCompare(){cmpMode=!cmpMode;document.getElementById('compare-toggle').classList.toggle('on',cmpMode);updateNeuron();}
+function updateAct(z){
+  const p=act(z),pct=actFn==='relu'?reluF(z).toFixed(3):(p*100).toFixed(1)+'%',col=p>=0.5?'var(--accent)':'var(--accent2)';
+  document.getElementById('act-neuron').style.borderColor=col;
+  document.getElementById('act-prob').textContent=pct;document.getElementById('act-prob').style.color=col;
+  document.getElementById('act-fn-name').textContent={sigmoid:'Sigmoid σ(z)',step:'Step Function (1958)',relu:'ReLU (Modern)'}[actFn];
+  let m='<span class="hl">z = '+z.toFixed(3)+'</span>\n\n';
+  if(actFn==='sigmoid')m+='σ(z) = 1/(1+e⁻ᶻ) = <span class="hl">'+sig(z).toFixed(4)+'</span>';
+  else if(actFn==='step')m+='step(z) = z≥0 ? 1 : 0 = <span class="hl">'+stepF(z)+'</span>';
+  else m+='ReLU(z) = max(0,z) = <span class="hl">'+reluF(z).toFixed(4)+'</span>';
+  document.getElementById('act-math').innerHTML=m;drawActCv(z);
+}
+function drawActCv(cz){
+  const cv=document.getElementById('activation-canvas');if(!cv.offsetWidth)return;
+  const cx=cv.getContext('2d');cv.width=cv.offsetWidth*2;cv.height=520;cx.scale(2,2);
+  const w=cv.offsetWidth,h=260;cx.clearRect(0,0,w,h);const midY=h*0.7,zR=8;
+  cx.strokeStyle='rgba(255,255,255,0.06)';cx.lineWidth=1;
+  cx.beginPath();cx.moveTo(0,midY);cx.lineTo(w,midY);cx.stroke();cx.beginPath();cx.moveTo(w/2,0);cx.lineTo(w/2,h);cx.stroke();
+  const toX=z=>((z/zR)+0.5)*w*0.9+w*0.05,toY=(v,mx)=>midY-(v/mx)*midY*0.85;
+  function crv(fn,col,mx,dash){cx.beginPath();cx.strokeStyle=col;cx.lineWidth=dash?1.5:2.5;
+    if(dash)cx.setLineDash([5,5]);else cx.setLineDash([]);
+    for(let p=0;p<w;p++){const z=((p-w*0.05)/(w*0.9)-0.5)*zR;let v;
+      if(fn==='sigmoid')v=sig(z);else if(fn==='step')v=stepF(z);else v=Math.min(reluF(z),mx);
+      const y=toY(v,mx);p===0?cx.moveTo(p,y):cx.lineTo(p,y);}cx.stroke();cx.setLineDash([]);}
+  const mx=actFn==='relu'?zR/2:1;
+  if(cmpMode){crv('sigmoid',gAcc()+'66',1,true);crv('step',gAcc2()+'66',1,true);crv('relu','#ffd70066',zR/2,true);
+    crv(actFn,actFn==='sigmoid'?gAcc():actFn==='step'?gAcc2():'#ffd700',mx,false);}
+  else crv(actFn,actFn==='sigmoid'?gAcc():actFn==='step'?gAcc2():'#ffd700',mx,false);
+  let cv2;if(actFn==='sigmoid')cv2=sig(cz);else if(actFn==='step')cv2=stepF(cz);else cv2=Math.min(reluF(cz),mx);
+  cx.beginPath();cx.arc(toX(cz),toY(cv2,mx),7,0,Math.PI*2);cx.fillStyle='#ffd700';cx.fill();cx.strokeStyle='white';cx.lineWidth=2;cx.stroke();
+}
+
+// === CHAIN ===
+function updateChain(){
+  const s=S[cur],vals=gI(),b1=parseFloat(document.getElementById('bias-slider').value),z1=compZ(vals,s.inp.map(x=>x.w),b1),a1=sig(z1);
+  const cw=parseFloat(document.getElementById('chain-w').value),bud=parseFloat(document.getElementById('chain-bud').value);
+  const fri=parseFloat(document.getElementById('chain-fri').value),b2=parseFloat(document.getElementById('chain-b2').value);
+  document.getElementById('cw-val').textContent=cw.toFixed(2);document.getElementById('cb-val').textContent=bud.toFixed(2);
+  document.getElementById('cf-val').textContent=fri.toFixed(2);document.getElementById('cb2-val').textContent=b2.toFixed(2);
+  const z2=a1*cw+bud*0.8+fri*0.6+b2,a2=sig(z2);
+  const c1v=a1>=0.5?'var(--accent)':'var(--accent2)',c2v=a2>=0.5?'var(--accent)':'var(--accent2)';
+  const r1=h2r(a1>=0.5?gAcc():gAcc2()),r2=h2r(a2>=0.5?gAcc():gAcc2());
+  document.getElementById('chain-visual').innerHTML=
+    '<div class="chain-neuron" style="border-color:'+c1v+';background:rgba('+r1+',0.1)"><div style="font-size:1.2rem">'+s.emoji+'</div><div style="color:'+c1v+'">'+(a1*100).toFixed(0)+'%</div><div style="font-size:0.6rem;color:var(--text-dim)">N1</div></div>'+
+    '<div class="chain-arrow">→ ×'+cw.toFixed(1)+' →</div>'+
+    '<div class="chain-neuron" style="border-color:'+c2v+';background:rgba('+r2+',0.1);width:95px;height:95px"><div style="font-size:1.2rem">🎯</div><div style="color:'+c2v+';font-weight:700">'+(a2*100).toFixed(0)+'%</div><div style="font-size:0.6rem;color:var(--text-dim)">N2</div></div>';
+  document.getElementById('chain-math').innerHTML=
+    '<span class="hl">Neuron 1:</span>\nz\u2081='+z1.toFixed(3)+' \u2192 a\u2081=\u03C3(z\u2081)=<span class="hl">'+a1.toFixed(4)+'</span>\n\n<span class="hl2">Neuron 2:</span>\nz\u2082=(a\u2081\u00D7'+cw.toFixed(1)+')+(bud\u00D70.8)+(fri\u00D70.6)+b\u2082\nz\u2082=('+a1.toFixed(3)+'\u00D7'+cw.toFixed(1)+')+('+bud.toFixed(2)+'\u00D70.8)+('+fri.toFixed(2)+'\u00D70.6)+'+b2.toFixed(2)+'\nz\u2082=<span class="hl2">'+z2.toFixed(3)+'</span>\na\u2082=\u03C3(z\u2082)=<span class="hl">'+a2.toFixed(4)+'</span> \u2192 <span class="hl">'+(a2*100).toFixed(1)+'%</span>';
+}
+
+// === SENSITIVITY ===
+function drawSens(){
+  const cv=document.getElementById('sens-canvas');if(!cv.offsetWidth)return;
+  const cx=cv.getContext('2d');cv.width=cv.offsetWidth*2;cv.height=640;cx.scale(2,2);
+  const w=cv.offsetWidth,h=320;cx.clearRect(0,0,w,h);
+  const s=S[cur],vals=gI(),bias=parseFloat(document.getElementById('bias-slider').value),ws=s.inp.map(x=>x.w);
+  const cols=[gAcc(),gAcc2(),'#ffd700','#4ecdc4'];
+  cx.strokeStyle='rgba(255,255,255,0.04)';cx.lineWidth=1;
+  for(let i=0;i<=10;i++){const y=(i/10)*h;cx.beginPath();cx.moveTo(40,y);cx.lineTo(w,y);cx.stroke();}
+  const pad={l:50,r:20,t:20,b:30},pw=w-pad.l-pad.r,ph=h-pad.t-pad.b;
+  const infos=[];
+  s.inp.forEach((inp,idx)=>{cx.beginPath();cx.strokeStyle=cols[idx%4];cx.lineWidth=2;let mn=1,mx=0;
+    for(let st=0;st<=100;st++){const sv=st/100,tv=[...vals];tv[idx]=sv;const p=sig(compZ(tv,ws,bias));
+      if(p<mn)mn=p;if(p>mx)mx=p;const x=pad.l+(sv*pw),y=pad.t+(1-p)*ph;st===0?cx.moveTo(x,y):cx.lineTo(x,y);}
+    cx.stroke();infos.push({n:inp.e+' '+inp.n,r:mx-mn,c:cols[idx%4]});
+    const dx=pad.l+(vals[idx]*pw),p2=sig(compZ(vals,ws,bias)),dy=pad.t+(1-p2)*ph;
+    cx.beginPath();cx.arc(dx,dy,4,0,Math.PI*2);cx.fillStyle=cols[idx%4];cx.fill();});
+  cx.fillStyle='#78788a';cx.font='9px "DM Mono"';
+  s.inp.forEach((inp,i)=>{cx.fillStyle=cols[i%4];cx.fillRect(pad.l+(i*(pw/s.inp.length)),pad.t-14,10,10);
+    cx.fillStyle='#78788a';cx.font='9px "DM Sans"';cx.fillText(inp.n,pad.l+(i*(pw/s.inp.length))+14,pad.t-5);});
+  infos.sort((a,b)=>b.r-a.r);const bd=document.getElementById('sens-bars');bd.innerHTML='';
+  infos.forEach(x=>{bd.innerHTML+='<div class="sens-bar"><div class="bar-label">'+x.n+'</div><div class="bar-track"><div class="bar-fill" style="width:'+(x.r*100)+'%;background:'+x.c+'"></div></div><span style="font-family:var(--font-mono);font-size:0.75rem;color:'+x.c+';width:45px">'+(x.r*100).toFixed(1)+'%</span></div>';});
+}
+
+// === TRAINING ===
+function setTrainLabel(l){tLabel=l;document.getElementById('label-yes').classList.toggle('active',l===1);document.getElementById('label-no').classList.toggle('active',l===0);}
+function initTraining(){document.getElementById('training-canvas').addEventListener('click',function(e){
+  const r=this.getBoundingClientRect(),x=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y=Math.max(0,Math.min(1,1-(e.clientY-r.top)/r.height));
+  tPts.push({x:x,y:y,label:tLabel});document.getElementById('train-points-count').textContent=tPts.length;drawTraining();});}
+
+function drawTraining(){
+  const cv=document.getElementById('training-canvas');if(!cv.offsetWidth)return;
+  const cx=cv.getContext('2d');cv.width=cv.offsetWidth*2;cv.height=760;cx.scale(2,2);
+  const w=cv.offsetWidth,h=380,s=S[cur],xI=+document.getElementById('train-x').value,yI=+document.getElementById('train-y').value;
+  const c1=h2r(gAcc()),c2=h2r(gAcc2());
+  if(tW.length===s.inp.length){const res=4;
+    for(let px=0;px<w;px+=res)for(let py=0;py<h;py+=res){const xv=px/w,yv=1-(py/h),tv=s.inp.map(()=>0.5);tv[xI]=xv;tv[yI]=yv;
+      const p=sig(compZ(tv,tW,tB));cx.fillStyle='rgba('+Math.round(c1[0]*p+c2[0]*(1-p))+','+Math.round(c1[1]*p+c2[1]*(1-p))+','+Math.round(c1[2]*p+c2[2]*(1-p))+',0.25)';cx.fillRect(px,py,res,res);}
+    cx.strokeStyle='rgba(255,215,0,0.5)';cx.lineWidth=2;cx.setLineDash([5,4]);cx.beginPath();let st=false;
+    for(let px=0;px<w;px++){const xv=px/w;let ot=tB;s.inp.forEach(function(_,i){if(i!==xI&&i!==yI)ot+=0.5*tW[i];});
+      const yv=-(tW[xI]*xv+ot)/(tW[yI]||0.001),py=(1-yv)*h;
+      if(py>=0&&py<=h){if(!st){cx.moveTo(px,py);st=true;}else cx.lineTo(px,py);}}cx.stroke();cx.setLineDash([]);}
+  tPts.forEach(function(pt){const px=pt.x*w,py=(1-pt.y)*h;cx.beginPath();cx.arc(px,py,7,0,Math.PI*2);
+    cx.fillStyle=pt.label===1?'rgba('+c1+',0.85)':'rgba('+c2+',0.85)';cx.fill();cx.strokeStyle='white';cx.lineWidth=1.5;cx.stroke();
+    cx.fillStyle='white';cx.font='9px "DM Sans"';cx.fillText(pt.label===1?'✓':'✗',px-3,py+3);});
+  cx.fillStyle='#78788a';cx.font='11px "DM Sans"';if(s.inp[xI])cx.fillText(s.inp[xI].e+' '+s.inp[xI].n+' →',10,h-8);
+  updateTW();
+}
+
+function trainStep(){
+  if(!tPts.length)return;const s=S[cur],xI=+document.getElementById('train-x').value,yI=+document.getElementById('train-y').value;
+  const lr=parseFloat(document.getElementById('train-lr').value);
+  if(tW.length!==s.inp.length)tW=s.inp.map(()=>(Math.random()-0.5)*0.5);
+  let correct=0;
+  tPts.forEach(function(pt){const tv=s.inp.map(()=>0.5);tv[xI]=pt.x;tv[yI]=pt.y;
+    const z=compZ(tv,tW,tB),pred=sig(z),err=pt.label-pred,grad=pred*(1-pred);
+    tv.forEach(function(v,i){tW[i]+=lr*err*grad*v;});tB+=lr*err*grad;
+    if((pred>=0.5&&pt.label===1)||(pred<0.5&&pt.label===0))correct++;});
+  tSteps++;document.getElementById('train-step-count').textContent=tSteps;
+  document.getElementById('train-accuracy').textContent=((correct/tPts.length)*100).toFixed(0)+'%';drawTraining();
+}
+
+function toggleAutoTrain(){const btn=document.getElementById('auto-train-btn');
+  if(autoI){clearInterval(autoI);autoI=null;btn.textContent='▶ Auto';}
+  else{autoI=setInterval(trainStep,+document.getElementById('train-speed').value);btn.textContent='⏸ Stop';}}
+
+function resetTraining(){if(autoI){clearInterval(autoI);autoI=null;document.getElementById('auto-train-btn').textContent='▶ Auto';}
+  tPts=[];tW=S[cur].inp.map(()=>(Math.random()-0.5)*0.5);tB=0;tSteps=0;
+  document.getElementById('train-step-count').textContent='0';document.getElementById('train-accuracy').textContent='—';
+  document.getElementById('train-points-count').textContent='0';drawTraining();}
+
+function loadPreset(){tPts=[];for(let i=0;i<14;i++){const x=Math.random(),y=Math.random();tPts.push({x:x,y:y,label:(x+y>0.9)?1:0});}
+  document.getElementById('train-points-count').textContent=tPts.length;drawTraining();}
+
+function updateTW(){const s=S[cur];let h='<span class="hl">Learned Weights:</span>\n';
+  s.inp.forEach(function(inp,i){h+=inp.e+' '+inp.n+': <span class="hl">'+(tW[i]||0).toFixed(4)+'</span>\n';});
+  h+='\n⚖️ Bias: <span class="hl2">'+tB.toFixed(4)+'</span>';document.getElementById('train-weights-display').innerHTML=h;}
+
+// === TABS ===
+function switchTab(tab,btn){document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('panel-'+tab).classList.add('active');
+  setTimeout(function(){updateNeuron();if(tab==='training')drawTraining();},50);}
+
+// === INIT ===
+window.addEventListener('resize',function(){updateNeuron();});
+loadScenario('treat');initTraining();
+</script>
+</body>
+</html>
