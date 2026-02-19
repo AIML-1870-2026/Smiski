@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🪼 Moon Jelly Color Mixer</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --glass: rgba(255,255,255,0.18);
+    --glass-border: rgba(255,255,255,0.35);
+    --shadow: 0 8px 32px rgba(0,80,160,0.18);
+    --radius: 20px;
+    --font: 'Nunito', sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background 1s ease;
+  }
+
+  body.rgb-mode {
+    background: linear-gradient(160deg, #0a4fa8 0%, #1b8fc4 40%, #4dc8d4 70%, #a8e8f0 100%);
+  }
+  body.cmyk-mode {
+    background: linear-gradient(160deg, #020814 0%, #040d1f 40%, #061428 70%, #091c35 100%);
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+    background: var(--glass);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--glass-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 0 16px rgba(100,220,255,0.7);
+  }
+  .logo svg { filter: drop-shadow(0 0 8px rgba(120,230,255,0.8)); }
+
+  .mode-toggle {
+    display: flex;
+    background: rgba(0,0,0,0.2);
+    border-radius: 50px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .mode-btn {
+    border: none;
+    background: transparent;
+    color: rgba(255,255,255,0.6);
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 6px 18px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .mode-btn.active {
+    background: rgba(255,255,255,0.28);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(0,150,255,0.3);
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    padding: 14px 28px 0;
+  }
+  .tab-btn {
+    border: none;
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.7);
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 10px 24px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-bottom: none;
+  }
+  .tab-btn.active {
+    background: rgba(255,255,255,0.22);
+    color: #fff;
+    box-shadow: 0 -4px 20px rgba(100,220,255,0.2);
+  }
+  .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.18); color: #fff; }
+
+  /* ── MAIN CONTENT ── */
+  main {
+    padding: 0 20px 30px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── GLASS CARD ── */
+  .card {
+    background: var(--glass);
+    backdrop-filter: blur(18px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px;
+  }
+  .card h2 {
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 14px;
+    text-shadow: 0 0 10px rgba(150,230,255,0.5);
+  }
+
+  /* ── JELLYFISH SCENE ── */
+  #scene-container {
+    position: relative;
+    width: 100%;
+    height: 380px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 10px;
+    border: 1px solid var(--glass-border);
+    background: rgba(0,0,0,0.08);
+    cursor: default;
+  }
+  #scene-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .jelly-wrapper {
+    position: absolute;
+    cursor: grab;
+    user-select: none;
+    transform-origin: center top;
+    transition: filter 0.3s;
+  }
+  .jelly-wrapper:hover { filter: brightness(1.2); }
+  .jelly-wrapper.dragging { cursor: grabbing; z-index: 50; }
+  .jelly-label {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.85);
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  }
+
+  /* ── LAYOUT GRID ── */
+  .mixer-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 16px;
+    margin-top: 14px;
+  }
+  @media (max-width: 750px) {
+    .mixer-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── SLIDERS ── */
+  .slider-group { margin-bottom: 14px; }
+  .slider-group label {
+    display: flex;
+    justify-content: space-between;
+    color: rgba(255,255,255,0.9);
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+  }
+  .slider-group label span {
+    color: rgba(255,255,255,0.6);
+    font-weight: 600;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 50px;
+    background: rgba(255,255,255,0.2);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff 0%, #a0d8ef 60%, #4ab0d0 100%);
+    box-shadow: 0 2px 8px rgba(0,100,200,0.4), 0 0 0 2px rgba(255,255,255,0.5);
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  input[type=range].red-slider { background: linear-gradient(to right, rgba(200,0,0,0.3), rgba(255,80,80,0.5)); }
+  input[type=range].green-slider { background: linear-gradient(to right, rgba(0,150,0,0.3), rgba(80,220,80,0.5)); }
+  input[type=range].blue-slider { background: linear-gradient(to right, rgba(0,0,200,0.3), rgba(80,80,255,0.5)); }
+  input[type=range].cyan-slider { background: linear-gradient(to right, rgba(0,150,180,0.3), rgba(0,200,220,0.5)); }
+  input[type=range].magenta-slider { background: linear-gradient(to right, rgba(200,0,100,0.3), rgba(240,60,120,0.5)); }
+  input[type=range].yellow-slider { background: linear-gradient(to right, rgba(200,180,0,0.3), rgba(255,235,0,0.5)); }
+  input[type=range].key-slider { background: linear-gradient(to right, rgba(20,20,20,0.5), rgba(80,60,100,0.5)); }
+
+  .section-divider {
+    color: rgba(255,255,255,0.5);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 14px 0 10px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    padding-top: 10px;
+  }
+
+  /* ── RESULT CARD ── */
+  #result-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 22px;
+  }
+  #result-jelly-container {
+    width: 90px;
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .result-info {
+    text-align: center;
+    width: 100%;
+  }
+  #result-hex {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 0 20px currentColor;
+    letter-spacing: 2px;
+  }
+  #result-name {
+    color: rgba(255,255,255,0.75);
+    font-size: 0.88rem;
+    font-style: italic;
+    margin: 2px 0 8px;
+  }
+  .color-values {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+  }
+  .color-val {
+    background: rgba(0,0,0,0.15);
+    border-radius: 8px;
+    padding: 4px 10px;
+    color: rgba(255,255,255,0.85);
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+  }
+  .color-val span { color: rgba(255,255,255,0.5); font-size: 0.72rem; }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  .glass-btn {
+    flex: 1;
+    border: 1px solid var(--glass-border);
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 9px 12px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .glass-btn:hover {
+    background: rgba(255,255,255,0.28);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(100,200,255,0.25);
+  }
+  .glass-btn:active { transform: translateY(0); }
+
+  /* ── PALETTE STUDIO ── */
+  .palette-studio-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 14px;
+  }
+  @media (max-width: 700px) {
+    .palette-studio-grid { grid-template-columns: 1fr; }
+  }
+
+  .palette-list { display: flex; flex-direction: column; gap: 12px; }
+  .palette-entry {
+    background: rgba(0,0,0,0.15);
+    border-radius: 14px;
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .palette-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .palette-entry-header h3 {
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 800;
+  }
+  .palette-actions { display: flex; gap: 6px; }
+  .icon-btn {
+    border: none;
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.8);
+    border-radius: 8px;
+    padding: 4px 9px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: var(--font);
+    font-weight: 700;
+    transition: all 0.2s;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.25); color: #fff; }
+  .icon-btn.danger:hover { background: rgba(255,80,80,0.3); }
+
+  .swatch-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .swatch {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35);
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+  }
+  .swatch:hover { transform: scale(1.18); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+
+  /* ── GENERATOR CARD ── */
+  .generator-card { display: flex; flex-direction: column; gap: 14px; }
+  .gen-section {
+    background: rgba(0,0,0,0.12);
+    border-radius: 14px;
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .gen-section h3 {
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+  .harmony-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .harmony-btn {
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.85);
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 0.75rem;
+    padding: 5px 12px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .harmony-btn:hover, .harmony-btn.active {
+    background: rgba(255,255,255,0.25);
+    color: #fff;
+  }
+
+  .base-color-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .base-color-row label { color: rgba(255,255,255,0.8); font-size: 0.82rem; font-weight: 700; }
+  input[type=color] {
+    width: 38px;
+    height: 30px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: none;
+    padding: 0;
+  }
+  .hex-input {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 8px;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 5px 10px;
+    width: 90px;
+    outline: none;
+  }
+
+  .results-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 54px;
+    padding: 6px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 12px;
+    align-items: center;
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: linear-gradient(135deg, rgba(20,60,120,0.95), rgba(10,40,80,0.98));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 28px;
+    min-width: 300px;
+    max-width: 90vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal h3 {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 16px;
+  }
+  .modal input[type=text] {
+    width: 100%;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 10px;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 0.95rem;
+    padding: 10px 14px;
+    outline: none;
+    margin-bottom: 14px;
+  }
+  .modal select {
+    width: 100%;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 10px;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    outline: none;
+    margin-bottom: 14px;
+    cursor: pointer;
+  }
+  .modal select option { background: #0a2040; }
+  .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-btns button {
+    border: none;
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 9px 20px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-cancel { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
+  .btn-confirm { background: linear-gradient(135deg, #4ab0d0, #1b6fb0); color: #fff; }
+  .btn-confirm:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+  /* ── BUBBLE ANIMATION ── */
+  @keyframes bubbleFloat {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-40px) scale(0.5); }
+  }
+  .bubble-pop {
+    position: fixed;
+    pointer-events: none;
+    z-index: 999;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8), rgba(120,200,255,0.4));
+    border: 1px solid rgba(255,255,255,0.6);
+    animation: bubbleFloat 0.7s ease-out forwards;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: rgba(20,60,120,0.95);
+    border: 1px solid rgba(100,200,255,0.4);
+    color: #fff;
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 12px 24px;
+    border-radius: 50px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    z-index: 999;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── PARTICLE CANVAS ── */
+  #bg-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+  header, main, .tabs { position: relative; z-index: 1; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
+
+  .empty-state {
+    color: rgba(255,255,255,0.45);
+    font-size: 0.88rem;
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+  }
+
+  #new-palette-btn {
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .bias-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .bias-btn {
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.75);
+    font-family: var(--font);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .bias-btn.active, .bias-btn:hover {
+    background: rgba(255,255,255,0.22);
+    color: #fff;
+  }
+</style>
+</head>
+<body class="rgb-mode">
+
+<!-- Background particle canvas -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <svg width="32" height="36" viewBox="0 0 32 36" fill="none">
+      <ellipse cx="16" cy="14" rx="13" ry="12" fill="rgba(180,230,255,0.45)" stroke="rgba(200,240,255,0.7)" stroke-width="1.5"/>
+      <ellipse cx="16" cy="12" rx="8" ry="7" fill="rgba(220,245,255,0.35)"/>
+      <path d="M7 25 Q8 30 9 34" stroke="rgba(180,230,255,0.6)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      <path d="M11 26 Q11.5 32 12 36" stroke="rgba(180,230,255,0.6)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      <path d="M16 26 Q16 33 16 36" stroke="rgba(180,230,255,0.6)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      <path d="M21 26 Q20.5 32 20 36" stroke="rgba(180,230,255,0.6)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      <path d="M25 25 Q24 30 23 34" stroke="rgba(180,230,255,0.6)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    </svg>
+    Moon Jelly Color Mixer
+  </div>
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="rgb-mode-btn" onclick="setMode('rgb')">RGB</button>
+    <button class="mode-btn" id="cmyk-mode-btn" onclick="setMode('cmyk')">CMYK</button>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" id="tab-mixer" onclick="setTab('mixer')">🌊 Color Mixer</button>
+  <button class="tab-btn" id="tab-palette" onclick="setTab('palette')">🎨 Palette Studio</button>
+</div>
+
+<main>
+  <!-- TAB 1: COLOR MIXER -->
+  <div class="tab-panel active" id="panel-mixer">
+    <div class="mixer-grid">
+      <!-- Scene + Sliders column -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <!-- Jellyfish Scene -->
+        <div class="card" style="padding:14px;">
+          <h2 id="scene-title">🌊 Sunlit Ocean — Additive Light Mixing</h2>
+          <div id="scene-container">
+            <canvas id="scene-canvas"></canvas>
+            <!-- Jellies injected by JS -->
+          </div>
+        </div>
+
+        <!-- Sliders -->
+        <div class="card" id="sliders-card">
+          <h2>🎚️ Mix Controls</h2>
+          <div id="sliders-rgb">
+            <div class="slider-group">
+              <label>Red Intensity <span id="val-r">255</span></label>
+              <input type="range" class="red-slider" id="sl-r" min="0" max="255" value="255" oninput="onSlider('r',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>Green Intensity <span id="val-g">255</span></label>
+              <input type="range" class="green-slider" id="sl-g" min="0" max="255" value="255" oninput="onSlider('g',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>Blue Intensity <span id="val-b">255</span></label>
+              <input type="range" class="blue-slider" id="sl-b" min="0" max="255" value="255" oninput="onSlider('b',this.value)">
+            </div>
+            <div class="section-divider">Overlap Amounts</div>
+            <div class="slider-group">
+              <label>Red–Green Overlap <span id="val-rg">50</span>%</label>
+              <input type="range" id="sl-rg" min="0" max="100" value="50" oninput="onSlider('rg',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>Red–Blue Overlap <span id="val-rb">50</span>%</label>
+              <input type="range" id="sl-rb" min="0" max="100" value="50" oninput="onSlider('rb',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>Green–Blue Overlap <span id="val-gb">50</span>%</label>
+              <input type="range" id="sl-gb" min="0" max="100" value="50" oninput="onSlider('gb',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>All Three Overlap <span id="val-all">0</span>%</label>
+              <input type="range" id="sl-all" min="0" max="100" value="0" oninput="onSlider('all',this.value)">
+            </div>
+          </div>
+          <div id="sliders-cmyk" style="display:none;">
+            <div class="slider-group">
+              <label>Cyan <span id="val-c">100</span>%</label>
+              <input type="range" class="cyan-slider" id="sl-c" min="0" max="100" value="100" oninput="onSlider('c',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>Magenta <span id="val-m">100</span>%</label>
+              <input type="range" class="magenta-slider" id="sl-m" min="0" max="100" value="100" oninput="onSlider('m',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>Yellow <span id="val-y">100</span>%</label>
+              <input type="range" class="yellow-slider" id="sl-y" min="0" max="100" value="100" oninput="onSlider('y',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>Key (Black) <span id="val-k">100</span>%</label>
+              <input type="range" class="key-slider" id="sl-k" min="0" max="100" value="100" oninput="onSlider('k',this.value)">
+            </div>
+            <div class="section-divider">Overlap Amounts</div>
+            <div class="slider-group">
+              <label>Cyan–Magenta Overlap <span id="val-cm">50</span>%</label>
+              <input type="range" id="sl-cm" min="0" max="100" value="50" oninput="onSlider('cm',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>Cyan–Yellow Overlap <span id="val-cy">50</span>%</label>
+              <input type="range" id="sl-cy" min="0" max="100" value="50" oninput="onSlider('cy',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>Magenta–Yellow Overlap <span id="val-my">50</span>%</label>
+              <input type="range" id="sl-my" min="0" max="100" value="50" oninput="onSlider('my',this.value)">
+            </div>
+            <div class="slider-group">
+              <label>All Ink Overlap <span id="val-cmy">0</span>%</label>
+              <input type="range" id="sl-cmy" min="0" max="100" value="0" oninput="onSlider('cmy',this.value)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result column -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="card" id="result-card">
+          <h2>🪼 Your Mix</h2>
+          <div id="result-jelly-container">
+            <svg id="result-jelly-svg" width="80" height="90" viewBox="0 0 80 90">
+              <defs>
+                <radialGradient id="rjg" cx="40%" cy="35%" r="60%">
+                  <stop offset="0%" stop-color="rgba(255,255,255,0.7)"/>
+                  <stop offset="100%" stop-color="rgba(255,255,255,0.15)"/>
+                </radialGradient>
+                <filter id="rglow">
+                  <feGaussianBlur stdDeviation="4" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <ellipse id="result-bell" cx="40" cy="34" rx="32" ry="28" fill="url(#rjg)" filter="url(#rglow)" opacity="0.9"/>
+              <ellipse cx="40" cy="30" rx="18" ry="14" fill="rgba(255,255,255,0.25)"/>
+              <path id="rt1" d="M20 60 Q22 72 21 82" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <path id="rt2" d="M30 62 Q31 75 30 84" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <path id="rt3" d="M40 63 Q40 76 40 85" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <path id="rt4" d="M50 62 Q49 75 50 84" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <path id="rt5" d="M60 60 Q58 72 59 82" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+          <div class="result-info">
+            <div id="result-hex" style="color:#fff;">#FFFFFF</div>
+            <div id="result-name">Pure White</div>
+            <div class="color-values">
+              <div class="color-val"><span>RGB</span> <span id="result-rgb">255, 255, 255</span></div>
+              <div class="color-val"><span>CMYK</span> <span id="result-cmyk">0%, 0%, 0%, 0%</span></div>
+              <div class="color-val"><span>HEX</span> <span id="result-hex2">#FFFFFF</span></div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="glass-btn" onclick="openSaveModal()">💾 Save to Palette</button>
+            <button class="glass-btn" id="copy-btn" onclick="copyHex()">📋 Copy HEX</button>
+          </div>
+        </div>
+
+        <!-- Quick info -->
+        <div class="card" style="padding:16px;">
+          <h2 id="info-title">ℹ️ Additive Mixing Guide</h2>
+          <div id="info-text" style="color:rgba(255,255,255,0.75);font-size:0.82rem;line-height:1.7;">
+            <div>🔴 + 🟢 = <strong style="color:#ffff00;">Yellow</strong></div>
+            <div>🔴 + 🔵 = <strong style="color:#ff00ff;">Magenta</strong></div>
+            <div>🟢 + 🔵 = <strong style="color:#00ffff;">Cyan</strong></div>
+            <div>🔴 + 🟢 + 🔵 = <strong style="color:#fff;">White</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: PALETTE STUDIO -->
+  <div class="tab-panel" id="panel-palette">
+    <div class="palette-studio-grid" style="margin-top:14px;">
+      <!-- My Palettes -->
+      <div class="card">
+        <h2>🎨 My Palettes</h2>
+        <div id="palette-list" class="palette-list">
+          <div class="empty-state">No palettes yet — mix some colors and save them!</div>
+        </div>
+        <button class="glass-btn" id="new-palette-btn" onclick="createNewPalette()" style="margin-top:12px;">+ New Palette</button>
+      </div>
+
+      <!-- Generators -->
+      <div class="card">
+        <h2>✨ Color Generator</h2>
+        <div class="generator-card">
+
+          <!-- Random -->
+          <div class="gen-section">
+            <h3>🎲 Random Color</h3>
+            <div class="bias-row">
+              <button class="bias-btn active" id="bias-any" onclick="setBias('any')">Any</button>
+              <button class="bias-btn" id="bias-pastel" onclick="setBias('pastel')">Pastels</button>
+              <button class="bias-btn" id="bias-vivid" onclick="setBias('vivid')">Vivids</button>
+              <button class="bias-btn" id="bias-earth" onclick="setBias('earth')">Earth Tones</button>
+            </div>
+            <button class="glass-btn" onclick="generateRandom()" style="margin-bottom:10px;">🎲 Generate Random</button>
+            <div id="random-results" class="results-row"><span style="color:rgba(255,255,255,0.4);font-size:0.8rem;">Click generate!</span></div>
+          </div>
+
+          <!-- Smart Suggest -->
+          <div class="gen-section">
+            <h3>🧠 Smart Suggest</h3>
+            <div class="base-color-row">
+              <label>Base Color:</label>
+              <input type="color" id="smart-color-pick" value="#4ab0d0" oninput="syncHexInput(this.value)">
+              <input type="text" class="hex-input" id="smart-hex-input" value="#4ab0d0" oninput="syncColorPick(this.value)" maxlength="7" placeholder="#RRGGBB">
+            </div>
+            <div class="harmony-btns">
+              <button class="harmony-btn active" id="harm-comp" onclick="setHarmony('complementary')">Complementary</button>
+              <button class="harmony-btn" id="harm-anal" onclick="setHarmony('analogous')">Analogous</button>
+              <button class="harmony-btn" id="harm-tri" onclick="setHarmony('triadic')">Triadic</button>
+              <button class="harmony-btn" id="harm-split" onclick="setHarmony('split')">Split-Comp</button>
+              <button class="harmony-btn" id="harm-tet" onclick="setHarmony('tetradic')">Tetradic</button>
+            </div>
+            <button class="glass-btn" onclick="generateHarmony()" style="margin-bottom:10px;">🧠 Suggest Colors</button>
+            <div id="smart-results" class="results-row"><span style="color:rgba(255,255,255,0.4);font-size:0.8rem;">Pick a base color and harmony!</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- SAVE MODAL -->
+<div class="modal-overlay" id="save-modal">
+  <div class="modal">
+    <h3>💾 Save Color to Palette</h3>
+    <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;margin-bottom:12px;">Save <strong id="modal-color-preview" style="color:#fff;"></strong> to a palette</p>
+    <select id="modal-palette-select">
+      <option value="__new__">+ Create New Palette</option>
+    </select>
+    <input type="text" id="modal-new-palette-name" placeholder="New palette name..." style="display:none;" />
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeSaveModal()">Cancel</button>
+      <button class="btn-confirm" onclick="confirmSave()">Save 🪼</button>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME MODAL -->
+<div class="modal-overlay" id="rename-modal">
+  <div class="modal">
+    <h3>✏️ Rename Palette</h3>
+    <input type="text" id="rename-input" placeholder="New name..." />
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeRenameModal()">Cancel</button>
+      <button class="btn-confirm" onclick="confirmRename()">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let currentMode = 'rgb';
+let currentTab = 'mixer';
+let currentBias = 'any';
+let currentHarmony = 'complementary';
+let renamingPaletteId = null;
+
+let sliders = {
+  r: 255, g: 255, b: 255,
+  rg: 50, rb: 50, gb: 50, all: 0,
+  c: 100, m: 100, y: 100, k: 100,
+  cm: 50, cy: 50, my: 50, cmy: 0
+};
+
+let colorToSave = null;
+
+let palettes = JSON.parse(localStorage.getItem('mjcm-palettes') || '[]');
+
+// ═══════════════════════════════════════════════════
+// JELLYFISH SCENE
+// ═══════════════════════════════════════════════════
+const jellyDefs = {
+  rgb: [
+    { id: 'jelly-r', color: [255, 0, 0],   label: 'Red',   startX: 0.2, startY: 0.4 },
+    { id: 'jelly-g', color: [0, 255, 0],   label: 'Green', startX: 0.5, startY: 0.35 },
+    { id: 'jelly-b', color: [0, 0, 255],   label: 'Blue',  startX: 0.78, startY: 0.42 },
+  ],
+  cmyk: [
+    { id: 'jelly-c', color: [0, 188, 212],  label: 'Cyan',    startX: 0.18, startY: 0.3 },
+    { id: 'jelly-m', color: [233, 30, 99],  label: 'Magenta', startX: 0.42, startY: 0.45 },
+    { id: 'jelly-y', color: [255, 235, 59], label: 'Yellow',  startX: 0.65, startY: 0.3 },
+    { id: 'jelly-k', color: [30, 30, 30],   label: 'Black',   startX: 0.82, startY: 0.45 },
+  ]
+};
+
+let jellyStates = [];
+let animFrame = null;
+let dragState = null;
+
+function buildScene() {
+  const container = document.getElementById('scene-container');
+  // Remove old jelly wrappers
+  container.querySelectorAll('.jelly-wrapper').forEach(el => el.remove());
+
+  const defs = jellyDefs[currentMode];
+  const cw = container.clientWidth || 600;
+  const ch = container.clientHeight || 380;
+
+  jellyStates = defs.map((d, i) => {
+    const el = createJellySVG(d.id, d.color, d.label, i);
+    el.style.left = (d.startX * cw - 45) + 'px';
+    el.style.top  = (d.startY * ch - 45) + 'px';
+    container.appendChild(el);
+    return {
+      id: d.id,
+      el,
+      color: d.color,
+      label: d.label,
+      x: d.startX * cw - 45,
+      y: d.startY * ch - 45,
+      phase: i * 1.2,
+      baseY: d.startY * ch - 45,
+      intensity: 1.0
+    };
+  });
+
+  setupDrag(container);
+  startAnimation();
+}
+
+function createJellySVG(id, rgb, label, idx) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'jelly-wrapper';
+  wrapper.id = id + '-wrapper';
+  wrapper.setAttribute('tabindex', '0');
+  wrapper.setAttribute('aria-label', label + ' jellyfish');
+
+  const [r, g, b] = rgb;
+  const size = 90;
+  wrapper.style.width = size + 'px';
+  wrapper.style.height = (size + 30) + 'px';
+
+  wrapper.innerHTML = `
+    <svg width="${size}" height="${size}" viewBox="0 0 90 90" style="overflow:visible;">
+      <defs>
+        <radialGradient id="jg-${idx}" cx="40%" cy="35%" r="65%">
+          <stop offset="0%" stop-color="rgba(255,255,255,0.75)"/>
+          <stop offset="60%" stop-color="rgba(${r},${g},${b},0.55)"/>
+          <stop offset="100%" stop-color="rgba(${r},${g},${b},0.25)"/>
+        </radialGradient>
+        <filter id="jf-${idx}">
+          <feGaussianBlur stdDeviation="5" result="blur"/>
+          <feFlood flood-color="rgba(${r},${g},${b},0.5)" result="color"/>
+          <feComposite in="color" in2="blur" operator="in" result="glow"/>
+          <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <ellipse cx="45" cy="36" rx="36" ry="30" fill="url(#jg-${idx})" filter="url(#jf-${idx})" opacity="0.92"/>
+      <ellipse cx="45" cy="32" rx="20" ry="15" fill="rgba(255,255,255,0.22)"/>
+      <path class="jt" d="M22 65 Q24 76 22 88" stroke="rgba(${r},${g},${b},0.6)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      <path class="jt" d="M32 68 Q33 80 32 90" stroke="rgba(${r},${g},${b},0.6)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      <path class="jt" d="M45 69 Q45 81 45 90" stroke="rgba(${r},${g},${b},0.6)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      <path class="jt" d="M58 68 Q57 80 58 90" stroke="rgba(${r},${g},${b},0.6)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      <path class="jt" d="M68 65 Q66 76 68 88" stroke="rgba(${r},${g},${b},0.6)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+    </svg>
+    <div class="jelly-label">${label}</div>
+  `;
+
+  return wrapper;
+}
+
+function setupDrag(container) {
+  container.addEventListener('mousedown', onDragStart);
+  container.addEventListener('touchstart', onDragStart, { passive: false });
+  window.addEventListener('mousemove', onDragMove);
+  window.addEventListener('touchmove', onDragMove, { passive: false });
+  window.addEventListener('mouseup', onDragEnd);
+  window.addEventListener('touchend', onDragEnd);
+}
+
+function getPointer(e) {
+  if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  return { x: e.clientX, y: e.clientY };
+}
+
+function onDragStart(e) {
+  const wrapper = e.target.closest('.jelly-wrapper');
+  if (!wrapper) return;
+  e.preventDefault();
+  const state = jellyStates.find(s => s.el === wrapper);
+  if (!state) return;
+  const ptr = getPointer(e);
+  const rect = wrapper.getBoundingClientRect();
+  dragState = {
+    state,
+    offsetX: ptr.x - rect.left,
+    offsetY: ptr.y - rect.top
+  };
+  wrapper.classList.add('dragging');
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  e.preventDefault();
+  const ptr = getPointer(e);
+  const container = document.getElementById('scene-container');
+  const cr = container.getBoundingClientRect();
+  const maxX = cr.width - 90;
+  const maxY = cr.height - 100;
+  dragState.state.x = Math.max(0, Math.min(maxX, ptr.x - cr.left - dragState.offsetX));
+  dragState.state.y = Math.max(0, Math.min(maxY, ptr.y - cr.top - dragState.offsetY));
+  dragState.state.baseY = dragState.state.y;
+  dragState.state.el.style.left = dragState.state.x + 'px';
+  dragState.state.el.style.top  = dragState.state.y + 'px';
+  computeAndUpdateResult();
+}
+
+function onDragEnd() {
+  if (!dragState) return;
+  dragState.state.el.classList.remove('dragging');
+  dragState = null;
+}
+
+// ── ANIMATION ──
+function startAnimation() {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  const sceneCanvas = document.getElementById('scene-canvas');
+  const container = document.getElementById('scene-container');
+
+  function loop(t) {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    sceneCanvas.width = cw;
+    sceneCanvas.height = ch;
+    const ctx = sceneCanvas.getContext('2d');
+    ctx.clearRect(0, 0, cw, ch);
+
+    const T = t * 0.001;
+
+    // Animate idle jellies (not being dragged)
+    jellyStates.forEach(s => {
+      if (dragState && dragState.state === s) return;
+      const dy = Math.sin(T * 0.7 + s.phase) * 8;
+      const dx = Math.sin(T * 0.4 + s.phase * 0.7) * 3;
+      s.el.style.top  = (s.baseY + dy) + 'px';
+      s.el.style.left = (s.x + dx) + 'px';
+    });
+
+    // Draw overlap regions on canvas
+    drawOverlaps(ctx, cw, ch, T);
+
+    animFrame = requestAnimationFrame(loop);
+  }
+  animFrame = requestAnimationFrame(loop);
+}
+
+function getJellyCenter(s) {
+  return { x: parseFloat(s.el.style.left) + 45, y: parseFloat(s.el.style.top) + 36 };
+}
+
+function drawOverlaps(ctx, cw, ch, T) {
+  if (jellyStates.length < 2) return;
+
+  for (let i = 0; i < jellyStates.length; i++) {
+    for (let j = i + 1; j < jellyStates.length; j++) {
+      const a = jellyStates[i];
+      const b = jellyStates[j];
+      const ca = getJellyCenter(a);
+      const cb = getJellyCenter(b);
+      const dist = Math.hypot(ca.x - cb.x, ca.y - cb.y);
+      const overlapThreshold = 70;
+      if (dist < overlapThreshold) {
+        const alpha = 0.4 * (1 - dist / overlapThreshold);
+        const mx = (ca.x + cb.x) / 2;
+        const my = (ca.y + cb.y) / 2;
+        const blended = blendAdditive(a.color, b.color);
+        const grad = ctx.createRadialGradient(mx, my, 0, mx, my, 35);
+        grad.addColorStop(0, `rgba(${blended.join(',')},${alpha})`);
+        grad.addColorStop(1, `rgba(${blended.join(',')},0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(mx, my, 35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Triple overlap
+  if (jellyStates.length >= 3) {
+    const centers = jellyStates.map(getJellyCenter);
+    const cx = centers.reduce((s, c) => s + c.x, 0) / centers.length;
+    const cy = centers.reduce((s, c) => s + c.y, 0) / centers.length;
+    const maxD = Math.max(...centers.map(c => Math.hypot(c.x - cx, c.y - cy)));
+    if (maxD < 60) {
+      const allBlend = jellyStates.reduce((acc, s) => blendAdditive(acc, s.color), [0, 0, 0]);
+      const alpha = 0.35 * (1 - maxD / 60);
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 25);
+      grad.addColorStop(0, `rgba(${allBlend.join(',')},${alpha})`);
+      grad.addColorStop(1, `rgba(${allBlend.join(',')},0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 25, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// COLOR MATH
+// ═══════════════════════════════════════════════════
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function blendAdditive(a, b) {
+  return [clamp(a[0] + b[0], 0, 255), clamp(a[1] + b[1], 0, 255), clamp(a[2] + b[2], 0, 255)];
+}
+
+function blendSubtractive(a, b) {
+  return [
+    Math.round((a[0] / 255) * (b[0] / 255) * 255),
+    Math.round((a[1] / 255) * (b[1] / 255) * 255),
+    Math.round((a[2] / 255) * (b[2] / 255) * 255)
+  ];
+}
+
+function computeResult() {
+  if (currentMode === 'rgb') {
+    const ri = sliders.r / 255, gi = sliders.g / 255, bi = sliders.b / 255;
+    const rg = sliders.rg / 100, rb = sliders.rb / 100, gb = sliders.gb / 100, all = sliders.all / 100;
+    let R = 0, G = 0, B = 0;
+    R += ri * 255; G += gi * 255; B += bi * 255;
+    R = clamp(Math.round(R * ri + R * rg + R * rb + R * all), 0, 255);
+    G = clamp(Math.round(G * gi + G * rg + G * gb + G * all), 0, 255);
+    B = clamp(Math.round(B * bi + B * rb + B * gb + B * all), 0, 255);
+    // Simplified weighted blend
+    R = clamp(Math.round(ri * 255 * (1 - rg * 0.3 - rb * 0.3) + 255 * rg * 0.5 + 255 * rb * 0.5 + 255 * all), 0, 255);
+    G = clamp(Math.round(gi * 255 * (1 - rg * 0.3 - gb * 0.3) + 255 * rg * 0.5 + 255 * gb * 0.5 + 255 * all), 0, 255);
+    B = clamp(Math.round(bi * 255 * (1 - rb * 0.3 - gb * 0.3) + 255 * rb * 0.5 + 255 * gb * 0.5 + 255 * all), 0, 255);
+    return rgbToColorObj(R, G, B);
+  } else {
+    // CMYK subtractive
+    const C = sliders.c / 100, M = sliders.m / 100, Y = sliders.y / 100, K = sliders.k / 100;
+    const cm = sliders.cm / 100, cy = sliders.cy / 100, my = sliders.my / 100, cmy = sliders.cmy / 100;
+    const effC = clamp(C + cm * 0.4 + cy * 0.4 + cmy * 0.3, 0, 1);
+    const effM = clamp(M + cm * 0.4 + my * 0.4 + cmy * 0.3, 0, 1);
+    const effY = clamp(Y + cy * 0.4 + my * 0.4 + cmy * 0.3, 0, 1);
+    const effK = clamp(K + cmy * 0.2, 0, 1);
+    const r = Math.round(255 * (1 - effC) * (1 - effK));
+    const g = Math.round(255 * (1 - effM) * (1 - effK));
+    const b = Math.round(255 * (1 - effY) * (1 - effK));
+    return rgbToColorObj(r, g, b);
+  }
+}
+
+function rgbToColorObj(r, g, b) {
+  const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+  const cmyk = rgbToCmyk(r, g, b);
+  const name = getColorName(r, g, b);
+  return { hex, name, rgb: { r, g, b }, cmyk };
+}
+
+function rgbToCmyk(r, g, b) {
+  if (r === 0 && g === 0 && b === 0) return { c: 0, m: 0, y: 0, k: 100 };
+  const rp = r / 255, gp = g / 255, bp = b / 255;
+  const k = 1 - Math.max(rp, gp, bp);
+  if (k === 1) return { c: 0, m: 0, y: 0, k: 100 };
+  const c = (1 - rp - k) / (1 - k);
+  const m = (1 - gp - k) / (1 - k);
+  const y = (1 - bp - k) / (1 - k);
+  return {
+    c: Math.round(c * 100),
+    m: Math.round(m * 100),
+    y: Math.round(y * 100),
+    k: Math.round(k * 100)
+  };
+}
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      default: h = ((r - g) / d + 4) / 6;
+    }
+  }
+  return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+function hslToRgb(h, s, l) {
+  h /= 360; s /= 100; l /= 100;
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+}
+
+function hexToRgb(hex) {
+  hex = hex.replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+  const n = parseInt(hex, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+// ── COLOR NAMES ──
+const colorNames = [
+  [[0,0,0],'Midnight Void'],[[255,255,255],'Pure Light'],[[255,0,0],'Crimson Wave'],
+  [[0,255,0],'Seafoam Surge'],[[0,0,255],'Ocean Deep'],[[255,255,0],'Golden Tide'],
+  [[255,0,255],'Coral Bloom'],[[0,255,255],'Arctic Current'],[[128,0,0],'Deep Garnet'],
+  [[0,128,0],'Kelp Forest'],[[0,0,128],'Abyssal Blue'],[[128,128,0],'Sea Moss'],
+  [[0,128,128],'Tidal Teal'],[[128,0,128],'Reef Violet'],[[255,165,0],'Amber Surge'],
+  [[255,192,203],'Blossom Drift'],[[160,32,240],'Amethyst Glow'],[[64,224,208],'Turquoise Lagoon'],
+  [[255,127,80],'Coral Sunrise'],[[100,149,237],'Cornflower Sky'],[[0,191,255],'Deep Sky'],
+  [[50,205,50],'Lime Seagrass'],[[220,20,60],'Crimson Deep'],[[72,61,139],'Twilight Indigo'],
+  [[46,139,87],'Sea Jade'],[[175,238,238],'Pale Aqua'],[[135,206,235],'Sky Glass'],
+  [[0,206,209],'Dark Turquoise'],[[0,100,148],'Deep Cerulean'],[[102,204,255],'Aqua Bloom']
+];
+
+function getColorName(r, g, b) {
+  let best = colorNames[0][1], bestDist = Infinity;
+  for (const [[cr, cg, cb], name] of colorNames) {
+    const d = Math.hypot(r - cr, g - cg, b - cb);
+    if (d < bestDist) { bestDist = d; best = name; }
+  }
+  return best;
+}
+
+// ═══════════════════════════════════════════════════
+// RESULT UPDATE
+// ═══════════════════════════════════════════════════
+let currentResult = null;
+
+function computeAndUpdateResult() {
+  const col = computeResult();
+  currentResult = col;
+  const { r, g, b } = col.rgb;
+  const { c, m, y, k } = col.cmyk;
+
+  document.getElementById('result-hex').textContent = col.hex;
+  document.getElementById('result-hex').style.color = col.hex;
+  document.getElementById('result-hex2').textContent = col.hex;
+  document.getElementById('result-name').textContent = col.name;
+  document.getElementById('result-rgb').textContent = `${r}, ${g}, ${b}`;
+  document.getElementById('result-cmyk').textContent = `${c}%, ${m}%, ${y}%, ${k}%`;
+
+  // Update result jelly color
+  const bell = document.getElementById('result-bell');
+  if (bell) {
+    const grad = document.getElementById('rjg');
+    if (grad) {
+      grad.querySelector('stop:last-child').setAttribute('stop-color', `rgba(${r},${g},${b},0.3)`);
+    }
+    bell.setAttribute('fill', `rgba(${r},${g},${b},0.6)`);
+  }
+
+  // Glow on hex
+  document.getElementById('result-hex').style.textShadow = `0 0 20px ${col.hex}`;
+}
+
+function onSlider(key, val) {
+  sliders[key] = parseFloat(val);
+  const el = document.getElementById('val-' + key);
+  if (el) el.textContent = val;
+  computeAndUpdateResult();
+}
+
+// ═══════════════════════════════════════════════════
+// MODE & TAB
+// ═══════════════════════════════════════════════════
+function setMode(mode) {
+  currentMode = mode;
+  document.body.className = mode + '-mode';
+  document.getElementById('rgb-mode-btn').classList.toggle('active', mode === 'rgb');
+  document.getElementById('cmyk-mode-btn').classList.toggle('active', mode === 'cmyk');
+  document.getElementById('sliders-rgb').style.display = mode === 'rgb' ? '' : 'none';
+  document.getElementById('sliders-cmyk').style.display = mode === 'cmyk' ? '' : 'none';
+  document.getElementById('scene-title').textContent =
+    mode === 'rgb' ? '🌊 Sunlit Ocean — Additive Light Mixing' : '🌑 Bioluminescent Deep — Subtractive Ink Mixing';
+  document.getElementById('info-title').textContent =
+    mode === 'rgb' ? 'ℹ️ Additive Mixing Guide' : 'ℹ️ Subtractive Mixing Guide';
+  document.getElementById('info-text').innerHTML = mode === 'rgb'
+    ? `<div>🔴 + 🟢 = <strong style="color:#ffff00;">Yellow</strong></div>
+       <div>🔴 + 🔵 = <strong style="color:#ff00ff;">Magenta</strong></div>
+       <div>🟢 + 🔵 = <strong style="color:#00ffff;">Cyan</strong></div>
+       <div>🔴 + 🟢 + 🔵 = <strong style="color:#fff;">White</strong></div>`
+    : `<div>Cyan + Magenta = <strong style="color:#4444ff;">Blue</strong></div>
+       <div>Cyan + Yellow = <strong style="color:#44bb44;">Green</strong></div>
+       <div>Magenta + Yellow = <strong style="color:#ff4444;">Red</strong></div>
+       <div>C + M + Y = <strong style="color:#888;">Near Black</strong></div>`;
+
+  buildScene();
+  computeAndUpdateResult();
+}
+
+function setTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-mixer').classList.toggle('active', tab === 'mixer');
+  document.getElementById('tab-palette').classList.toggle('active', tab === 'palette');
+  document.getElementById('panel-mixer').classList.toggle('active', tab === 'mixer');
+  document.getElementById('panel-palette').classList.toggle('active', tab === 'palette');
+  if (tab === 'palette') renderPalettes();
+}
+
+// ═══════════════════════════════════════════════════
+// PALETTE MANAGEMENT
+// ═══════════════════════════════════════════════════
+function savePalettes() {
+  localStorage.setItem('mjcm-palettes', JSON.stringify(palettes));
+}
+
+function openSaveModal(colorObj) {
+  colorToSave = colorObj || currentResult;
+  if (!colorToSave) return;
+  document.getElementById('modal-color-preview').textContent = colorToSave.hex;
+  document.getElementById('modal-color-preview').style.color = colorToSave.hex;
+  const sel = document.getElementById('modal-palette-select');
+  sel.innerHTML = '<option value="__new__">+ Create New Palette</option>';
+  palettes.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  sel.onchange = () => {
+    document.getElementById('modal-new-palette-name').style.display =
+      sel.value === '__new__' ? '' : 'none';
+  };
+  document.getElementById('modal-new-palette-name').style.display = '';
+  document.getElementById('modal-new-palette-name').value = '';
+  document.getElementById('save-modal').classList.add('open');
+}
+
+function closeSaveModal() {
+  document.getElementById('save-modal').classList.remove('open');
+}
+
+function confirmSave() {
+  if (!colorToSave) return;
+  const sel = document.getElementById('modal-palette-select');
+  let palette;
+  if (sel.value === '__new__') {
+    const name = document.getElementById('modal-new-palette-name').value.trim() || 'My Palette';
+    palette = { id: Date.now().toString(), name, colors: [], createdAt: new Date(), updatedAt: new Date() };
+    palettes.push(palette);
+  } else {
+    palette = palettes.find(p => p.id === sel.value);
+  }
+  if (!palette) return;
+  palette.colors.push({ ...colorToSave });
+  palette.updatedAt = new Date();
+  savePalettes();
+  closeSaveModal();
+  spawnBubbles(document.getElementById('copy-btn'));
+  showToast(`Saved ${colorToSave.hex} to "${palette.name}" 🪼`);
+  if (currentTab === 'palette') renderPalettes();
+}
+
+function createNewPalette() {
+  const name = prompt('Palette name:');
+  if (!name) return;
+  palettes.push({ id: Date.now().toString(), name: name.trim(), colors: [], createdAt: new Date(), updatedAt: new Date() });
+  savePalettes();
+  renderPalettes();
+}
+
+function renamePalette(id) {
+  renamingPaletteId = id;
+  const p = palettes.find(p => p.id === id);
+  document.getElementById('rename-input').value = p ? p.name : '';
+  document.getElementById('rename-modal').classList.add('open');
+}
+
+function closeRenameModal() {
+  document.getElementById('rename-modal').classList.remove('open');
+  renamingPaletteId = null;
+}
+
+function confirmRename() {
+  const name = document.getElementById('rename-input').value.trim();
+  if (!name || !renamingPaletteId) { closeRenameModal(); return; }
+  const p = palettes.find(p => p.id === renamingPaletteId);
+  if (p) { p.name = name; savePalettes(); renderPalettes(); }
+  closeRenameModal();
+}
+
+function deletePalette(id) {
+  if (!confirm('Delete this palette?')) return;
+  palettes = palettes.filter(p => p.id !== id);
+  savePalettes();
+  renderPalettes();
+}
+
+function deleteColor(paletteId, colorIdx) {
+  const p = palettes.find(p => p.id === paletteId);
+  if (!p) return;
+  p.colors.splice(colorIdx, 1);
+  savePalettes();
+  renderPalettes();
+}
+
+function exportPalette(id) {
+  const p = palettes.find(p => p.id === id);
+  if (!p) return;
+  const css = `/* ${p.name} */\n:root {\n${p.colors.map((c, i) => `  --color-${i + 1}: ${c.hex};`).join('\n')}\n}`;
+  const blob = new Blob([css], { type: 'text/css' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = p.name.replace(/\s+/g, '-') + '.css';
+  a.click();
+}
+
+function renderPalettes() {
+  const list = document.getElementById('palette-list');
+  if (palettes.length === 0) {
+    list.innerHTML = '<div class="empty-state">No palettes yet — mix some colors and save them!</div>';
+    return;
+  }
+  list.innerHTML = '';
+  palettes.forEach(p => {
+    const entry = document.createElement('div');
+    entry.className = 'palette-entry';
+    entry.innerHTML = `
+      <div class="palette-entry-header">
+        <h3>${p.name}</h3>
+        <div class="palette-actions">
+          <button class="icon-btn" onclick="exportPalette('${p.id}')">Export CSS</button>
+          <button class="icon-btn" onclick="renamePalette('${p.id}')">Rename</button>
+          <button class="icon-btn danger" onclick="deletePalette('${p.id}')">Delete</button>
+        </div>
+      </div>
+      <div class="swatch-row" id="swatches-${p.id}"></div>
+    `;
+    list.appendChild(entry);
+
+    const swatchRow = document.getElementById('swatches-' + p.id);
+    if (p.colors.length === 0) {
+      swatchRow.innerHTML = '<span style="color:rgba(255,255,255,0.4);font-size:0.78rem;">Empty palette</span>';
+    } else {
+      p.colors.forEach((col, idx) => {
+        const sw = document.createElement('div');
+        sw.className = 'swatch';
+        sw.style.background = col.hex;
+        sw.title = `${col.name || col.hex}\nRight-click to remove`;
+        sw.innerHTML = '🪼';
+        sw.style.filter = 'drop-shadow(0 0 6px ' + col.hex + ')';
+        sw.setAttribute('aria-label', col.name || col.hex);
+        sw.addEventListener('click', () => showToast(col.hex + ' — ' + (col.name || ''), col.hex));
+        sw.addEventListener('contextmenu', e => { e.preventDefault(); deleteColor(p.id, idx); });
+        swatchRow.appendChild(sw);
+      });
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// COLOR GENERATOR
+// ═══════════════════════════════════════════════════
+function setBias(bias) {
+  currentBias = bias;
+  document.querySelectorAll('.bias-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('bias-' + bias).classList.add('active');
+}
+
+function setHarmony(h) {
+  currentHarmony = h;
+  document.querySelectorAll('.harmony-btn').forEach(b => b.classList.remove('active'));
+  const ids = { complementary: 'comp', analogous: 'anal', triadic: 'tri', split: 'split', tetradic: 'tet' };
+  document.getElementById('harm-' + ids[h]).classList.add('active');
+}
+
+function generateRandom() {
+  let h, s, l;
+  switch (currentBias) {
+    case 'pastel': h = Math.random() * 360; s = 30 + Math.random() * 30; l = 70 + Math.random() * 15; break;
+    case 'vivid':  h = Math.random() * 360; s = 80 + Math.random() * 20; l = 45 + Math.random() * 15; break;
+    case 'earth':  h = 20 + Math.random() * 60; s = 25 + Math.random() * 35; l = 30 + Math.random() * 30; break;
+    default:       h = Math.random() * 360; s = 40 + Math.random() * 60; l = 35 + Math.random() * 45;
+  }
+  const { r, g, b } = hslToRgb(h, s, l);
+  const col = rgbToColorObj(r, g, b);
+  renderGeneratorResults([col], 'random-results');
+}
+
+function syncHexInput(val) {
+  document.getElementById('smart-hex-input').value = val;
+}
+function syncColorPick(val) {
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+    document.getElementById('smart-color-pick').value = val;
+  }
+}
+
+function generateHarmony() {
+  let hex = document.getElementById('smart-hex-input').value.trim();
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) { showToast('Enter a valid hex color!'); return; }
+  const { r, g, b } = hexToRgb(hex);
+  const { h, s, l } = rgbToHsl(r, g, b);
+
+  let angles;
+  switch (currentHarmony) {
+    case 'complementary':  angles = [0, 180]; break;
+    case 'analogous':      angles = [0, 30, -30]; break;
+    case 'triadic':        angles = [0, 120, 240]; break;
+    case 'split':          angles = [0, 150, 210]; break;
+    case 'tetradic':       angles = [0, 90, 180, 270]; break;
+    default:               angles = [0, 180];
+  }
+
+  const colors = angles.map(a => {
+    const nh = ((h + a) % 360 + 360) % 360;
+    const { r: nr, g: ng, b: nb } = hslToRgb(nh, s, l);
+    return rgbToColorObj(nr, ng, nb);
+  });
+
+  renderGeneratorResults(colors, 'smart-results');
+}
+
+function renderGeneratorResults(colors, containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  colors.forEach(col => {
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.flexDirection = 'column';
+    wrap.style.alignItems = 'center';
+    wrap.style.gap = '4px';
+
+    const sw = document.createElement('div');
+    sw.className = 'swatch';
+    sw.style.background = col.hex;
+    sw.style.filter = 'drop-shadow(0 0 6px ' + col.hex + ')';
+    sw.innerHTML = '🪼';
+    sw.title = col.hex;
+
+    const label = document.createElement('div');
+    label.style.color = 'rgba(255,255,255,0.75)';
+    label.style.fontSize = '0.68rem';
+    label.style.fontWeight = '700';
+    label.style.textAlign = 'center';
+    label.textContent = col.hex;
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'icon-btn';
+    saveBtn.textContent = '+ Save';
+    saveBtn.style.fontSize = '0.65rem';
+    saveBtn.onclick = () => openSaveModal(col);
+
+    wrap.appendChild(sw);
+    wrap.appendChild(label);
+    wrap.appendChild(saveBtn);
+    container.appendChild(wrap);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════
+function copyHex() {
+  if (!currentResult) return;
+  navigator.clipboard.writeText(currentResult.hex).then(() => {
+    spawnBubbles(document.getElementById('copy-btn'));
+    showToast('Copied ' + currentResult.hex + ' to clipboard!');
+  });
+}
+
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  if (color) t.style.borderColor = color;
+  else t.style.borderColor = 'rgba(100,200,255,0.4)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function spawnBubbles(el) {
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  for (let i = 0; i < 6; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble-pop';
+    const size = 6 + Math.random() * 10;
+    b.style.width = b.style.height = size + 'px';
+    b.style.left = (rect.left + rect.width / 2 + (Math.random() - 0.5) * 40) + 'px';
+    b.style.top  = (rect.top + (Math.random() - 0.5) * 20) + 'px';
+    b.style.animationDelay = (Math.random() * 0.3) + 's';
+    document.body.appendChild(b);
+    setTimeout(() => b.remove(), 1000);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// BACKGROUND PARTICLES
+// ═══════════════════════════════════════════════════
+const bgCanvas = document.getElementById('bg-canvas');
+const bgCtx = bgCanvas.getContext('2d');
+let particles = [];
+
+function initParticles() {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+  particles = Array.from({ length: 40 }, () => ({
+    x: Math.random() * bgCanvas.width,
+    y: Math.random() * bgCanvas.height,
+    r: 1 + Math.random() * 3,
+    vy: -(0.2 + Math.random() * 0.5),
+    vx: (Math.random() - 0.5) * 0.3,
+    alpha: 0.2 + Math.random() * 0.5,
+    phase: Math.random() * Math.PI * 2
+  }));
+}
+
+function animateBg(t) {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+  bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+  const T = t * 0.001;
+
+  particles.forEach(p => {
+    p.y += p.vy;
+    p.x += p.vx + Math.sin(T + p.phase) * 0.2;
+    if (p.y < -10) { p.y = bgCanvas.height + 10; p.x = Math.random() * bgCanvas.width; }
+    bgCtx.beginPath();
+    bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    const col = currentMode === 'rgb' ? `rgba(150,220,255,${p.alpha})` : `rgba(100,200,255,${p.alpha * 0.5})`;
+    bgCtx.fillStyle = col;
+    bgCtx.fill();
+  });
+  requestAnimationFrame(animateBg);
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  initParticles();
+  buildScene();
+});
+
+initParticles();
+requestAnimationFrame(animateBg);
+buildScene();
+computeAndUpdateResult();
+</script>
+</body>
+</html>
