@@ -1,6 +1,6 @@
 # 🪼 Moon Jelly Color Mixer — Product Specification
 
-**Version:** 1.0  
+**Version:** 1.1
 **Aesthetic:** Frutiger Aero / Y2K Nostalgia  
 **Concept:** An interactive color theory tool featuring translucent moon jellyfish as living color swatches, blending together like real light or ink.
 
@@ -24,6 +24,10 @@
 7. [Data Model](#data-model)
 8. [Technical Stack](#technical-stack)
 9. [Accessibility](#accessibility)
+10. [Stretch Challenges](#stretch-challenges)
+    - [Contrast Checker](#contrast-checker)
+    - [Color Blindness Simulator](#color-blindness-simulator)
+    - [Accessible Palette Mode](#accessible-palette-mode)
 
 ---
 
@@ -83,8 +87,8 @@ Moon Jelly Color Mixer is a single-page web application with two main tabs. User
 - Color palette: cerulean, aquamarine, white highlights, golden light rays
 - Ambient particles: small bubbles floating upward
 
-**Jellyfish:**  
-Three primary RGB jellyfish, each a glowing translucent bell:
+**Jellyfish:**
+Three primary RGB jellyfish, each a fully translucent bell rendered in pure color with no white highlight or specular overlay — so the blended color in overlap zones is clearly visible:
 
 | Jelly | Color | Glow Color |
 |-------|-------|------------|
@@ -107,8 +111,8 @@ Three primary RGB jellyfish, each a glowing translucent bell:
 - Color palette: deep navy, near-black, vivid neon glows
 - Jellyfish emit visible light halos; their glow is the dominant visual feature
 
-**Jellyfish:**  
-Four primary CMYK jellyfish:
+**Jellyfish:**
+Four primary CMYK jellyfish, also rendered without specular highlight ellipses so blended overlap colors read clearly:
 
 | Jelly | Color | Glow Color |
 |-------|-------|------------|
@@ -127,15 +131,27 @@ Four primary CMYK jellyfish:
 
 ### Mixer Controls
 
+#### Color Source — Drag OR Sliders (mutually exclusive)
+
+The result color is driven by **one source at a time**:
+
+| Source | When it activates | How it works |
+|--------|------------------|--------------|
+| **Jellyfish Overlap** | When two or more jellies are physically dragged to overlap on screen | The overlap region is detected geometrically; the blended color of every overlapping pair (and triple) is computed using the active color model and averaged by overlap area |
+| **Sliders** | When the user adjusts a slider | Slider values directly set each channel's intensity and the pairwise / all-group mix weights; the result is calculated mathematically |
+
+Switching from one input to the other immediately updates the result display. If no jellies overlap and no sliders have been changed, the result defaults to showing no mix (transparent / neutral).
+
 #### Free Drag Interaction
 - Jellyfish **float idly** in the scene with a gentle, organic bobbing animation (sinusoidal vertical drift + slight tentacle sway)
 - Users can **click and drag** any jellyfish to reposition it
-- When two or more jellyfish **overlap**, their translucent bodies blend visually, and the mixed color is computed in real time
-- The overlap region renders as a new semi-transparent layer using the correct color model math
+- When two or more jellyfish **overlap**, their translucent bodies blend visually; the **mixed color becomes the result** and is computed in real time from the overlap geometry
+- The overlap region renders as a blended semi-transparent layer using the correct color model math — no white highlight is added so the true mixed hue is clearly visible
 - Jellyfish return to idle floating animation when released
+- Dragging activates **Drag mode**; any subsequent slider move switches to **Slider mode**
 
 #### Sliders Panel
-A collapsible panel (Frutiger Aero frosted-glass card) titled **"Mix Controls"** with:
+A Frutiger Aero frosted-glass card titled **"Mix Controls"** with a **Slider Mode** indicator. Moving any slider deactivates drag-driven color and recomputes via pure channel math.
 
 **RGB Mode Sliders:**
 - `Red Intensity` — 0 to 255
@@ -153,7 +169,7 @@ A collapsible panel (Frutiger Aero frosted-glass card) titled **"Mix Controls"**
 - `Key (Black)` — 0% to 100%
 - Pairwise overlap sliders for each combination
 
-Each slider visually updates the corresponding jellyfish opacity/position and recalculates the mix in real time. Sliders are styled as glassy aqua pill-shaped tracks with pearl-like thumb handles.
+Sliders are styled as glassy aqua pill-shaped tracks with pearl-like thumb handles.
 
 ---
 
@@ -421,10 +437,97 @@ tetradic: hue, hue + 90°, hue + 180°, hue + 270°
 
 ---
 
+## Stretch Challenges
+
+### Contrast Checker
+
+A dedicated tool (accessible from the Palette Studio tab or as a standalone panel) that evaluates the accessibility of any two colors placed together.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  ♿ Contrast Checker                                       │
+│──────────────────────────────────────────────────────────│
+│  Foreground: [color picker]  #1A1A2E                     │
+│  Background: [color picker]  #E0F7FA                     │
+│──────────────────────────────────────────────────────────│
+│  Contrast Ratio:  12.3 : 1                               │
+│                                                           │
+│  Normal Text    AA ✅  AAA ✅                              │
+│  Large Text     AA ✅  AAA ✅                              │
+│  UI Components  AA ✅                                     │
+│──────────────────────────────────────────────────────────│
+│  [Preview: Sample text on background]                    │
+└──────────────────────────────────────────────────────────┘
+```
+
+**WCAG thresholds:**
+
+| Level | Normal Text | Large Text | UI / Graphics |
+|-------|-------------|------------|---------------|
+| AA    | ≥ 4.5 : 1  | ≥ 3.0 : 1 | ≥ 3.0 : 1    |
+| AAA   | ≥ 7.0 : 1  | ≥ 4.5 : 1 | N/A           |
+
+- Contrast ratio calculated using WCAG relative luminance formula
+- Live preview renders sample body text and large heading text in the chosen foreground on the chosen background
+- Both foreground and background can be loaded from any saved palette color
+- Ratio and pass/fail badges update instantly on every color change
+
+---
+
+### Color Blindness Simulator
+
+Available in the Palette Studio tab. Simulates how a saved palette (or any set of colors) appears to users with color vision deficiency.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  👁 Color Blindness Simulator                             │
+│──────────────────────────────────────────────────────────│
+│  Palette: [dropdown]  "Ocean Dreams"                     │
+│──────────────────────────────────────────────────────────│
+│  Normal Vision     🪼 🪼 🪼 🪼 🪼                         │
+│  Protanopia        🪼 🪼 🪼 🪼 🪼  (red-blind)            │
+│  Deuteranopia      🪼 🪼 🪼 🪼 🪼  (green-blind)          │
+│  Tritanopia        🪼 🪼 🪼 🪼 🪼  (blue-blind)           │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Simulation algorithm:** Apply the standard LMS-based color transformation matrices for each deficiency type to convert sRGB → simulated sRGB. Each row of swatches shows the palette colors as perceived under that condition.
+
+**Deficiency types:**
+
+| Type | Affected | Description |
+|------|----------|-------------|
+| Protanopia | L-cones (red) | Reds appear dark/brown; reds and greens confused |
+| Deuteranopia | M-cones (green) | Greens appear olive/yellow; reds and greens confused |
+| Tritanopia | S-cones (blue) | Blues appear green; yellows and purples confused |
+
+---
+
+### Accessible Palette Mode
+
+An option in the **Random & Smart Color Generator** that constrains generated colors so they maintain minimum contrast ratios against each other or against a specified background.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  ♿ Accessible Palette Mode                  [ ON / OFF ] │
+│──────────────────────────────────────────────────────────│
+│  Minimum contrast target:                                 │
+│    ○ AA (4.5:1)   ● AAA (7.0:1)                         │
+│  Check contrast against:                                  │
+│    ○ Each other   ● Background  [color picker] #FFFFFF   │
+└──────────────────────────────────────────────────────────┘
+```
+
+- When **ON**, the generator rejects and resamples any candidate color that fails the selected contrast threshold
+- Works with both Random Color and Smart Suggest generators
+- Each generated swatch displays its contrast ratio badge
+- Helps designers build inclusive, WCAG-compliant color palettes
+
+---
+
 ## Out of Scope (v1.0)
 
 - User accounts / cloud sync (palettes are local only)
-- Color blindness simulation mode (future)
 - LAB / HSL color models (future)
 - Mobile-optimized drag (touch events are supported but not the primary design target)
 - AI-generated palette names (future — for now uses curated lookup table)
