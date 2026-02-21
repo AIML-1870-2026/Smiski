@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Readability Explorer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #1a1a2e;
+      color: #ffffff;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.3px; }
+    header p  { font-size: 0.85rem; color: #a0aec0; margin-top: 2px; }
+
+    /* ── Tab Bar ── */
+    .tab-bar {
+      display: flex;
+      background: #16213e;
+      padding: 0 24px;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      color: #a0aec0;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 12px 20px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .tab-btn:hover { color: #e2e8f0; }
+    .tab-btn.active { color: #63b3ed; border-bottom-color: #63b3ed; }
+
+    /* ── Tab Panels ── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Tab 1 Layout ── */
+    #tab-readability {
+      display: none;
+      gap: 0;
+    }
+    #tab-readability.active {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      grid-template-rows: auto;
+      min-height: calc(100vh - 110px);
+    }
+
+    /* ── WCAG Sidebar ── */
+    .wcag-sidebar {
+      background: #ffffff;
+      border-right: 1px solid #e2e8f0;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      align-self: start;
+    }
+    .wcag-sidebar h2 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #4a5568;
+    }
+    .contrast-ratio-display {
+      text-align: center;
+      padding: 14px 10px;
+      background: #f7fafc;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .contrast-ratio-display .ratio-number {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #1a1a1a;
+      line-height: 1;
+    }
+    .contrast-ratio-display .ratio-label {
+      font-size: 0.7rem;
+      color: #718096;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .wcag-check {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .wcag-check .check-label { color: #2d3748; }
+    .wcag-check .check-badge {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      color: #fff;
+    }
+    .wcag-check.pass { background: #f0fff4; }
+    .wcag-check.fail { background: #fff5f5; }
+    .wcag-check.pass .check-badge { background: #2E7D32; }
+    .wcag-check.fail .check-badge { background: #C62828; }
+
+    .wcag-threshold {
+      font-size: 0.7rem;
+      color: #a0aec0;
+      text-align: center;
+    }
+
+    /* ── Main Content ── */
+    .main-content {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+    }
+
+    /* ── Text Preview ── */
+    .text-preview-wrap { }
+    .text-preview-wrap label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: #4a5568;
+      margin-bottom: 6px;
+    }
+    #text-preview {
+      width: 100%;
+      min-height: 160px;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      font-size: 16px;
+      line-height: 1.65;
+      resize: vertical;
+      transition: background-color 0.15s, color 0.15s;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    /* ── Controls Grid ── */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .control-panel {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 16px;
+    }
+    .control-panel h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: #4a5568;
+      margin-bottom: 12px;
+    }
+
+    .color-swatch {
+      width: 100%;
+      height: 36px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border: 1px solid #e2e8f0;
+      transition: background-color 0.1s;
+    }
+
+    .channel-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 56px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .channel-row:last-of-type { margin-bottom: 0; }
+    .channel-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #718096;
+    }
+    input[type="range"] {
+      width: 100%;
+      cursor: pointer;
+      accent-color: #4a90e2;
+      height: 4px;
+    }
+    .channel-num {
+      width: 54px;
+      padding: 3px 5px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      text-align: center;
+      color: #2d3748;
+      background: #f7fafc;
+    }
+    .channel-num:focus { outline: 2px solid #63b3ed; outline-offset: 1px; }
+    .channel-num:disabled { opacity: 0.45; cursor: not-allowed; }
+    input[type="range"]:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .luminance-display {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: #718096;
+      text-align: right;
+    }
+    .luminance-display span { font-weight: 700; color: #4a5568; }
+
+    /* ── Text Size Panel (full width) ── */
+    .text-size-panel {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 16px;
+    }
+    .text-size-panel h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: #4a5568;
+      margin-bottom: 12px;
+    }
+    .size-row {
+      display: grid;
+      grid-template-columns: 1fr 60px;
+      align-items: center;
+      gap: 10px;
+    }
+    .size-note {
+      margin-top: 8px;
+      font-size: 0.72rem;
+      color: #a0aec0;
+      line-height: 1.5;
+    }
+
+    /* ── Presets Panel ── */
+    .presets-panel {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 16px;
+    }
+    .presets-panel h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: #4a5568;
+      margin-bottom: 14px;
+    }
+    .preset-category { margin-bottom: 14px; }
+    .preset-category:last-child { margin-bottom: 0; }
+    .preset-category-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #a0aec0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .preset-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .preset-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 11px;
+      border-radius: 20px;
+      border: 1px solid #e2e8f0;
+      background: #f7fafc;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2d3748;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .preset-btn:hover { border-color: #63b3ed; box-shadow: 0 0 0 2px #ebf8ff; }
+    .preset-swatch {
+      width: 28px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.15);
+      flex-shrink: 0;
+    }
+
+    /* ── Tab 2 Layout ── */
+    #tab-vision {
+      display: none;
+      padding: 24px;
+      gap: 20px;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    #tab-vision.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .vision-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 20px;
+    }
+    .vision-card h2 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: #4a5568;
+      margin-bottom: 14px;
+    }
+
+    .vision-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .vision-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 24px;
+      border: 2px solid #e2e8f0;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #2d3748;
+      background: #f7fafc;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .vision-option input[type="radio"] { accent-color: #4a90e2; }
+    .vision-option.selected { border-color: #4a90e2; background: #ebf4ff; color: #1a4a8f; }
+
+    .vision-description {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #fffbeb;
+      border-left: 3px solid #f6ad55;
+      font-size: 0.82rem;
+      color: #744210;
+      line-height: 1.5;
+      display: none;
+    }
+    .vision-description.visible { display: block; }
+
+    .vision-preview-wrap { }
+    .vision-preview-wrap label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: #4a5568;
+      margin-bottom: 6px;
+    }
+    #vision-preview {
+      width: 100%;
+      min-height: 140px;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      font-size: 16px;
+      line-height: 1.65;
+      font-family: Georgia, "Times New Roman", serif;
+      transition: filter 0.3s;
+    }
+
+    .disabled-note {
+      font-size: 0.78rem;
+      color: #e53e3e;
+      font-weight: 600;
+      margin-top: 10px;
+      display: none;
+    }
+    .disabled-note.visible { display: block; }
+
+    /* ── SVG Filters ── */
+    #svg-filters { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+    /* ── Responsive ── */
+    @media (max-width: 680px) {
+      #tab-readability.active {
+        grid-template-columns: 1fr;
+      }
+      .wcag-sidebar {
+        position: static;
+        border-right: none;
+        border-bottom: 1px solid #e2e8f0;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+      .controls-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SVG Color Blindness Filters -->
+<svg id="svg-filters" aria-hidden="true">
+  <defs>
+    <filter id="filter-protanopia">
+      <feColorMatrix type="matrix" values="
+        0.567 0.433 0     0 0
+        0.558 0.442 0     0 0
+        0     0.242 0.758 0 0
+        0     0     0     1 0"/>
+    </filter>
+    <filter id="filter-deuteranopia">
+      <feColorMatrix type="matrix" values="
+        0.625 0.375 0     0 0
+        0.700 0.300 0     0 0
+        0     0.300 0.700 0 0
+        0     0     0     1 0"/>
+    </filter>
+    <filter id="filter-tritanopia">
+      <feColorMatrix type="matrix" values="
+        0.950 0.050 0     0 0
+        0     0.433 0.567 0 0
+        0     0.475 0.525 0 0
+        0     0     0     1 0"/>
+    </filter>
+    <filter id="filter-monochromacy">
+      <feColorMatrix type="matrix" values="
+        0.2126 0.7152 0.0722 0 0
+        0.2126 0.7152 0.0722 0 0
+        0.2126 0.7152 0.0722 0 0
+        0      0      0      1 0"/>
+    </filter>
+  </defs>
+</svg>
+
+<!-- Header -->
+<header>
+  <div>
+    <h1>Readability Explorer</h1>
+    <p>Test color combinations against WCAG accessibility standards</p>
+  </div>
+</header>
+
+<!-- Tab Bar -->
+<nav class="tab-bar" role="tablist" aria-label="Application tabs">
+  <button class="tab-btn active" role="tab" aria-selected="true"  aria-controls="tab-readability" id="btn-readability">Readability</button>
+  <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="tab-vision"      id="btn-vision">Vision Type Simulation</button>
+</nav>
+
+<!-- ══════════════════════════════════════════ -->
+<!--  TAB 1: READABILITY                        -->
+<!-- ══════════════════════════════════════════ -->
+<div id="tab-readability" class="tab-panel active" role="tabpanel" aria-labelledby="btn-readability">
+
+  <!-- WCAG Sidebar -->
+  <aside class="wcag-sidebar" aria-label="WCAG Compliance">
+    <h2>WCAG Compliance</h2>
+
+    <div class="contrast-ratio-display" aria-live="polite" aria-atomic="true">
+      <div class="ratio-number" id="contrast-ratio-value">—</div>
+      <div class="ratio-label">Contrast Ratio</div>
+    </div>
+
+    <div class="wcag-check" id="normal-check" aria-label="Normal text compliance">
+      <span class="check-label">Normal Text<br><small style="font-weight:400;color:#718096">≥ 4.5:1</small></span>
+      <span class="check-badge" id="normal-badge">—</span>
+    </div>
+
+    <div class="wcag-check" id="large-check" aria-label="Large text compliance">
+      <span class="check-label">Large Text<br><small style="font-weight:400;color:#718096">≥ 3:1</small></span>
+      <span class="check-badge" id="large-badge">—</span>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Text Preview -->
+    <div class="text-preview-wrap">
+      <label for="text-preview">Text Preview — type or paste your own text below</label>
+      <textarea id="text-preview">This is sample text. Paste your own article or excerpt here to explore how different color and size combinations affect readability on screen. Good contrast helps everyone read more comfortably, especially in low-light conditions or on bright displays. Try adjusting the sliders on the left to see how foreground and background colors interact.</textarea>
+    </div>
+
+    <!-- Color Controls -->
+    <div class="controls-grid">
+
+      <!-- Background Color -->
+      <div class="control-panel">
+        <h3>Background Color</h3>
+        <div class="color-swatch" id="bg-swatch" aria-label="Background color preview"></div>
+
+        <div class="channel-row">
+          <span class="channel-label">R</span>
+          <input type="range" id="bg-r" min="0" max="255" value="255" aria-label="Background red">
+          <input type="number" class="channel-num" id="bg-r-num" min="0" max="255" value="255" aria-label="Background red value">
+        </div>
+        <div class="channel-row">
+          <span class="channel-label">G</span>
+          <input type="range" id="bg-g" min="0" max="255" value="255" aria-label="Background green">
+          <input type="number" class="channel-num" id="bg-g-num" min="0" max="255" value="255" aria-label="Background green value">
+        </div>
+        <div class="channel-row">
+          <span class="channel-label">B</span>
+          <input type="range" id="bg-b" min="0" max="255" value="255" aria-label="Background blue">
+          <input type="number" class="channel-num" id="bg-b-num" min="0" max="255" value="255" aria-label="Background blue value">
+        </div>
+        <div class="luminance-display">Luminance: <span id="bg-luminance">1.000</span></div>
+      </div>
+
+      <!-- Text Color -->
+      <div class="control-panel">
+        <h3>Text Color</h3>
+        <div class="color-swatch" id="text-swatch" aria-label="Text color preview"></div>
+
+        <div class="channel-row">
+          <span class="channel-label">R</span>
+          <input type="range" id="tx-r" min="0" max="255" value="0" aria-label="Text red">
+          <input type="number" class="channel-num" id="tx-r-num" min="0" max="255" value="0" aria-label="Text red value">
+        </div>
+        <div class="channel-row">
+          <span class="channel-label">G</span>
+          <input type="range" id="tx-g" min="0" max="255" value="0" aria-label="Text green">
+          <input type="number" class="channel-num" id="tx-g-num" min="0" max="255" value="0" aria-label="Text green value">
+        </div>
+        <div class="channel-row">
+          <span class="channel-label">B</span>
+          <input type="range" id="tx-b" min="0" max="255" value="0" aria-label="Text blue">
+          <input type="number" class="channel-num" id="tx-b-num" min="0" max="255" value="0" aria-label="Text blue value">
+        </div>
+        <div class="luminance-display">Luminance: <span id="tx-luminance">0.000</span></div>
+      </div>
+    </div>
+
+    <!-- Text Size -->
+    <div class="text-size-panel">
+      <h3>Text Size</h3>
+      <div class="size-row">
+        <input type="range" id="font-size-slider" min="8" max="72" value="16" aria-label="Font size">
+        <input type="number" class="channel-num" id="font-size-num" min="8" max="72" value="16" aria-label="Font size value">
+      </div>
+      <p class="size-note">
+        Current size: <strong id="size-display">16px</strong> &nbsp;|&nbsp;
+        WCAG "large text" threshold: ≥ 18pt (24px) or bold ≥ 14pt (~18.67px).
+        Large text requires only 3:1 contrast; normal text requires 4.5:1.
+      </p>
+    </div>
+
+    <!-- Preset Schemes -->
+    <div class="presets-panel">
+      <h3>Preset Color Schemes</h3>
+
+      <div class="preset-category">
+        <div class="preset-category-label">High Contrast</div>
+        <div class="preset-buttons">
+          <button class="preset-btn" data-bg="0,0,0" data-tx="255,255,255">
+            <span class="preset-swatch" style="background:linear-gradient(90deg,#000 50%,#fff 50%)"></span>White on Black
+          </button>
+          <button class="preset-btn" data-bg="255,255,255" data-tx="0,0,0">
+            <span class="preset-swatch" style="background:linear-gradient(90deg,#fff 50%,#000 50%)"></span>Black on White
+          </button>
+        </div>
+      </div>
+
+      <div class="preset-category">
+        <div class="preset-category-label">Low Contrast</div>
+        <div class="preset-buttons">
+          <button class="preset-btn" data-bg="255,255,255" data-tx="180,180,180">
+            <span class="preset-swatch" style="background:linear-gradient(90deg,#fff 50%,#b4b4b4 50%)"></span>Light Gray on White
+          </button>
+          <button class="preset-btn" data-bg="255,255,255" data-tx="255,220,0">
+            <span class="preset-swatch" style="background:linear-gradient(90deg,#fff 50%,#ffdc00 50%)"></span>Yellow on White
+          </button>
+        </div>
+      </div>
+
+      <div class="preset-category">
+        <div class="preset-category-label">Common Website Schemes</div>
+        <div class="preset-buttons">
+          <button class="preset-btn" data-bg="255,255,255" data-tx="26,43,77">
+            <span class="preset-swatch" style="background:linear-gradient(90deg,#fff 50%,#1a2b4d 50%)"></span>Dark Navy on White
+          </button>
+          <button class="preset-btn" data-bg="237,237,237" data-tx="54,54,54">
+            <span class="preset-swatch" style="background:linear-gradient(90deg,#ededed 50%,#363636 50%)"></span>Charcoal on Light Gray
+          </button>
+          <button class="preset-btn" data-bg="245,245,240" data-tx="0,102,102">
+            <span class="preset-swatch" style="background:linear-gradient(90deg,#f5f5f0 50%,#006666 50%)"></span>Teal on Off-White
+          </button>
+        </div>
+      </div>
+
+      <div class="preset-category">
+        <div class="preset-category-label">Problematic — Fail WCAG</div>
+        <div class="preset-buttons">
+          <button class="preset-btn" data-bg="0,128,0" data-tx="255,0,0">
+            <span class="preset-swatch" style="background:linear-gradient(90deg,#008000 50%,#ff0000 50%)"></span>Red on Green
+          </button>
+          <button class="preset-btn" data-bg="128,0,128" data-tx="0,0,255">
+            <span class="preset-swatch" style="background:linear-gradient(90deg,#800080 50%,#0000ff 50%)"></span>Blue on Purple
+          </button>
+          <button class="preset-btn" data-bg="255,255,255" data-tx="255,220,0">
+            <span class="preset-swatch" style="background:linear-gradient(90deg,#fff 50%,#ffdc00 50%)"></span>Yellow on White
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!--  TAB 2: VISION TYPE SIMULATION             -->
+<!-- ══════════════════════════════════════════ -->
+<div id="tab-vision" class="tab-panel" role="tabpanel" aria-labelledby="btn-vision">
+
+  <div class="vision-card">
+    <h2>Vision Type</h2>
+    <div class="vision-options" role="radiogroup" aria-label="Select vision type">
+
+      <label class="vision-option selected">
+        <input type="radio" name="vision" value="normal" checked> Normal
+      </label>
+      <label class="vision-option">
+        <input type="radio" name="vision" value="protanopia"> Protanopia (Red-blind)
+      </label>
+      <label class="vision-option">
+        <input type="radio" name="vision" value="deuteranopia"> Deuteranopia (Green-blind)
+      </label>
+      <label class="vision-option">
+        <input type="radio" name="vision" value="tritanopia"> Tritanopia (Blue-blind)
+      </label>
+      <label class="vision-option">
+        <input type="radio" name="vision" value="monochromacy"> Monochromacy (Grayscale)
+      </label>
+
+    </div>
+    <div class="vision-description" id="vision-desc" role="status" aria-live="polite"></div>
+    <p class="disabled-note" id="disabled-note">Color controls are disabled while a simulated vision mode is active. Switch back to Normal to edit colors.</p>
+  </div>
+
+  <div class="vision-card vision-preview-wrap">
+    <h2>Simulated Preview</h2>
+    <div id="vision-preview" aria-label="Simulated text preview">
+      This is sample text. Paste your own article or excerpt here to explore how different color and size combinations affect readability on screen. Good contrast helps everyone read more comfortably, especially in low-light conditions or on bright displays.
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ── Utility ── */
+  const $ = id => document.getElementById(id);
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function linearize(c8) {
+    const c = c8 / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+
+  function relativeLuminance(r, g, b) {
+    return 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b);
+  }
+
+  function contrastRatio(l1, l2) {
+    const hi = Math.max(l1, l2), lo = Math.min(l1, l2);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  function toHex(r, g, b) {
+    return '#' + [r, g, b].map(v => clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0')).join('');
+  }
+
+  /* ── State ── */
+  let bg = { r: 255, g: 255, b: 255 };
+  let tx = { r: 0,   g: 0,   b: 0   };
+  let fontSize = 16;
+
+  /* ── DOM refs ── */
+  const preview    = $('text-preview');
+  const bgSwatch   = $('bg-swatch');
+  const txSwatch   = $('text-swatch');
+  const ratioEl    = $('contrast-ratio-value');
+  const normalCheck = $('normal-check');
+  const largCheck   = $('large-check');
+  const normalBadge  = $('normal-badge');
+  const largeBadge   = $('large-badge');
+  const bgLumEl    = $('bg-luminance');
+  const txLumEl    = $('tx-luminance');
+  const sizeDisplay  = $('size-display');
+  const visionPreview = $('vision-preview');
+
+  /* ── Render ── */
+  function render() {
+    const bgHex = toHex(bg.r, bg.g, bg.b);
+    const txHex = toHex(tx.r, tx.g, tx.b);
+
+    preview.style.backgroundColor = bgHex;
+    preview.style.color = txHex;
+    bgSwatch.style.backgroundColor = bgHex;
+    txSwatch.style.backgroundColor = txHex;
+
+    const bgL = relativeLuminance(bg.r, bg.g, bg.b);
+    const txL = relativeLuminance(tx.r, tx.g, tx.b);
+
+    bgLumEl.textContent = bgL.toFixed(3);
+    txLumEl.textContent = txL.toFixed(3);
+
+    const ratio = contrastRatio(bgL, txL);
+    ratioEl.textContent = ratio.toFixed(2) + ':1';
+
+    const passNormal = ratio >= 4.5;
+    const passLarge  = ratio >= 3.0;
+
+    normalBadge.textContent = passNormal ? '✓ Pass' : '✗ Fail';
+    largeBadge.textContent  = passLarge  ? '✓ Pass' : '✗ Fail';
+
+    normalCheck.className = 'wcag-check ' + (passNormal ? 'pass' : 'fail');
+    largCheck.className   = 'wcag-check ' + (passLarge  ? 'pass' : 'fail');
+
+    // Sync sliders & inputs
+    syncChannel('bg', bg);
+    syncChannel('tx', tx);
+
+    // Mirror to vision preview
+    visionPreview.style.backgroundColor = bgHex;
+    visionPreview.style.color = txHex;
+    visionPreview.style.fontSize = fontSize + 'px';
+  }
+
+  function syncChannel(prefix, ch) {
+    const channels = ['r', 'g', 'b'];
+    channels.forEach(c => {
+      const slider = $(prefix + '-' + c);
+      const num    = $(prefix + '-' + c + '-num');
+      const val = ch[c];
+      if (+slider.value !== val) slider.value = val;
+      if (+num.value    !== val) num.value    = val;
+    });
+  }
+
+  /* ── Wire color controls ── */
+  function wireChannel(prefix, obj) {
+    ['r', 'g', 'b'].forEach(c => {
+      const slider = $(prefix + '-' + c);
+      const num    = $(prefix + '-' + c + '-num');
+
+      slider.addEventListener('input', () => {
+        obj[c] = clamp(+slider.value, 0, 255);
+        num.value = obj[c];
+        render();
+      });
+      num.addEventListener('input', () => {
+        const v = clamp(+num.value, 0, 255);
+        obj[c] = isNaN(v) ? obj[c] : v;
+        slider.value = obj[c];
+        render();
+      });
+    });
+  }
+
+  wireChannel('bg', bg);
+  wireChannel('tx', tx);
+
+  /* ── Font size ── */
+  const fontSlider = $('font-size-slider');
+  const fontNum    = $('font-size-num');
+
+  fontSlider.addEventListener('input', () => {
+    fontSize = clamp(+fontSlider.value, 8, 72);
+    fontNum.value = fontSize;
+    preview.style.fontSize = fontSize + 'px';
+    visionPreview.style.fontSize = fontSize + 'px';
+    sizeDisplay.textContent = fontSize + 'px';
+  });
+  fontNum.addEventListener('input', () => {
+    fontSize = clamp(+fontNum.value, 8, 72);
+    fontSlider.value = fontSize;
+    preview.style.fontSize = fontSize + 'px';
+    visionPreview.style.fontSize = fontSize + 'px';
+    sizeDisplay.textContent = fontSize + 'px';
+  });
+
+  /* ── Preset buttons ── */
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const [br, bg2, bb] = btn.dataset.bg.split(',').map(Number);
+      const [tr, tg, tb]  = btn.dataset.tx.split(',').map(Number);
+      bg.r = br; bg.g = bg2; bg.b = bb;
+      tx.r = tr; tx.g = tg;  tx.b = tb;
+      render();
+    });
+  });
+
+  /* ── Tab switching ── */
+  const tabBtns   = document.querySelectorAll('.tab-btn');
+  const tabPanels = document.querySelectorAll('.tab-panel');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+      tabPanels.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+      const target = btn.getAttribute('aria-controls');
+      $(target).classList.add('active');
+    });
+  });
+
+  /* ── Vision simulation ── */
+  const visionDescriptions = {
+    protanopia:    'Protanopia (Red-blind): Individuals cannot perceive red light. Reds appear dark and are difficult to distinguish from greens and browns.',
+    deuteranopia:  'Deuteranopia (Green-blind): The most common form of color blindness. Green is indistinguishable from certain reds and oranges.',
+    tritanopia:    'Tritanopia (Blue-blind): Blue appears greenish, and yellow appears violet or light gray. Blues and greens are hard to differentiate.',
+    monochromacy:  'Monochromacy (Achromatopsia): Complete color blindness — all colors appear as shades of gray. Vision is based entirely on luminance.',
+  };
+
+  const filterMap = {
+    normal:       'none',
+    protanopia:   'url(#filter-protanopia)',
+    deuteranopia: 'url(#filter-deuteranopia)',
+    tritanopia:   'url(#filter-tritanopia)',
+    monochromacy: 'url(#filter-monochromacy)',
+  };
+
+  const visionDesc   = $('vision-desc');
+  const disabledNote = $('disabled-note');
+
+  // All slider + number inputs for color controls
+  const colorInputs = document.querySelectorAll(
+    '#bg-r, #bg-g, #bg-b, #bg-r-num, #bg-g-num, #bg-b-num, #tx-r, #tx-g, #tx-b, #tx-r-num, #tx-g-num, #tx-b-num'
+  );
+
+  document.querySelectorAll('input[name="vision"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const val = radio.value;
+
+      // Update option highlighting
+      document.querySelectorAll('.vision-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.querySelector('input').value === val);
+      });
+
+      // Apply filter to vision preview
+      visionPreview.style.filter = filterMap[val] || 'none';
+
+      // Description
+      if (val === 'normal') {
+        visionDesc.textContent = '';
+        visionDesc.classList.remove('visible');
+        disabledNote.classList.remove('visible');
+        colorInputs.forEach(el => el.disabled = false);
+      } else {
+        visionDesc.textContent = visionDescriptions[val] || '';
+        visionDesc.classList.add('visible');
+        disabledNote.classList.add('visible');
+        colorInputs.forEach(el => el.disabled = true);
+      }
+    });
+  });
+
+  /* ── Initial render ── */
+  render();
+</script>
+</body>
+</html>
