@@ -908,7 +908,7 @@ const SUIT_NAME = { '♠':'spades','♥':'hearts','♦':'diamonds','♣':'clubs'
 function cardImgSrc(card) {
   const r = RANK_NAME[card.rank] || card.rank;
   const s = SUIT_NAME[card.suit];
-  return `PNG-cards-1.3%202/${r}_of_${s}.png`;
+  return `PNG-cards-1.3 2/${r}_of_${s}.png`;
 }
 
 function makeDeck(numDecks) {
@@ -1728,8 +1728,7 @@ D.insYesBtn.addEventListener('click', takeInsurance);
 D.insNoBtn.addEventListener ('click', declineInsurance);
 
 document.querySelectorAll('.chip').forEach(ch => {
-  ch.addEventListener('click',      () => { if (!ch.disabled) addBet(+ch.dataset.v); });
-  ch.addEventListener('mouseenter', () => { if (!ch.disabled) Audio.hover(); });
+  ch.addEventListener('click', () => { if (!ch.disabled) addBet(+ch.dataset.v); });
 });
 
 D.clearBtn.addEventListener('click', () => { if (!D.clearBtn.disabled) clearBet(); });
@@ -1745,9 +1744,6 @@ D.standBtn.addEventListener ('click', () => { if (!D.standBtn.disabled)  stand()
 D.doubleBtn.addEventListener('click', () => { if (!D.doubleBtn.disabled) doubleDown(); });
 D.splitBtn.addEventListener ('click', () => { if (!D.splitBtn.disabled)  split(); });
 
-document.querySelectorAll('.act-btn').forEach(b => {
-  b.addEventListener('mouseenter', () => { if (!b.disabled) Audio.hover(); });
-});
 
 D.musicBtn.addEventListener('click', () => {
   const on = D.musicBtn.classList.toggle('on');
