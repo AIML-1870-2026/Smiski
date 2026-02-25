@@ -564,6 +564,7 @@
 <audio id="bg-music" loop preload="none">
   <source src="ScreenRecording_02-24-2026%2022-39-58_1%20copy.mp4" type="video/mp4">
 </audio>
+<audio id="flip-sfx" src="240776__f4ngy__card-flip.wav" preload="auto"></audio>
 
 <!-- Particle canvas overlay -->
 <canvas id="particle-canvas"></canvas>
@@ -772,6 +773,7 @@ const settings = {
 const Audio = (() => {
   let ctx, sfxG;
   const bgMusic = document.getElementById('bg-music');
+  const flipSfx = document.getElementById('flip-sfx');
 
   function boot() {
     if (ctx) return;
@@ -810,6 +812,9 @@ const Audio = (() => {
   return {
     click()    { boot(); tone(820, 'square',   0.05, 0.18); },
     hover()    { boot(); tone(620, 'square',   0.04, 0.07); },
+    cardFlip() {
+      try { flipSfx.currentTime = 0; flipSfx.play().catch(() => {}); } catch(e) {}
+    },
     chip()     { boot(); tone(920, 'sine', 0.07, 0.22); tone(1120, 'sine', 0.05, 0.18, 0.04); },
     win()      { boot(); [523,659,784,1046].forEach((f,i) => tone(f,'sine',0.22,0.32,i*.1)); },
     lose()     { boot(); [400,340,280,220].forEach((f,i) => tone(f,'sawtooth',0.22,0.28,i*.09)); },
@@ -1266,7 +1271,6 @@ function resetRound() {
 }
 
 function pickPoss(idx) {
-  Audio.chip();
   S.possPick = idx;
   const avail = POSS_POOL.filter(p => !S.possWon.includes(p.name) && p !== S.possPool[idx]);
   S.dealerPoss = avail.length ? avail[Math.floor(Math.random() * avail.length)] : null;
@@ -1277,7 +1281,6 @@ function pickPoss(idx) {
 
 function addBet(val) {
   if (S.bet + val > S.balance) return;
-  Audio.chip();
   S.bet += val;
   renderBalance();
   renderButtons();
@@ -1292,7 +1295,6 @@ function clearBet() {
 }
 
 function deal() {
-  Audio.click();
   if (S.possMode) { dealPoss(); return; }
   if (S.bet === 0) return;
 
@@ -1371,7 +1373,6 @@ function afterInsuranceDecision() {
 }
 
 function takeInsurance() {
-  Audio.chip();
   const insAmt = Math.floor(S.roundBet / 2);
   S.insuranceBet = insAmt;
   S.balance -= insAmt;
@@ -1379,7 +1380,6 @@ function takeInsurance() {
 }
 
 function declineInsurance() {
-  Audio.click();
   afterInsuranceDecision();
 }
 
@@ -1408,7 +1408,6 @@ function dealPoss() {
 
 function hit() {
   if (S.phase !== 'player_turn') return;
-  Audio.click();
   const hand = S.playerHands[S.handIdx];
   const card = S.deck.pop(); card.hidden = false;
   hand.push(card);
@@ -1429,7 +1428,6 @@ function hit() {
 
 function stand() {
   if (S.phase !== 'player_turn') return;
-  Audio.click();
   if (S.handIdx < S.playerHands.length - 1) {
     S.handIdx++;
     setStatus(`Hand ${S.handIdx + 1} of ${S.playerHands.length} — your move`);
@@ -1443,7 +1441,6 @@ function stand() {
 
 function doubleDown() {
   if (S.phase !== 'player_turn') return;
-  Audio.chip();
   S.balance -= S.roundBet;
   S.roundBet *= 2;
   const hand = S.playerHands[S.handIdx];
@@ -1463,7 +1460,6 @@ function doubleDown() {
 
 function split() {
   if (S.phase !== 'player_turn') return;
-  Audio.chip();
   const hand = S.playerHands[S.handIdx];
   S.balance -= S.roundBet;
   S.splits++;
@@ -1514,6 +1510,7 @@ function revealDealer() {
     if (hidden && cardEls[idx]) {
       setTimeout(() => {
         cardEls[idx].classList.add('flip-in');
+        Audio.cardFlip();
         // Remove animation class after it completes
         cardEls[idx].addEventListener('animationend', () => {
           cardEls[idx].classList.remove('flip-in');
@@ -1697,7 +1694,6 @@ wireToggle('tog-tells',     'dealerTells');
    EVENT LISTENERS
 ═══════════════════════════════════════════════ */
 D.startBtn.addEventListener('click', () => {
-  Audio.click();
   D.instr.classList.add('hidden');
   D.game.classList.add('visible');
   initState();
@@ -1708,7 +1704,6 @@ D.startBtn.addEventListener('click', () => {
 });
 
 D.restartBtn.addEventListener('click', () => {
-  Audio.click();
   D.gameOver.classList.remove('on');
   initState();
   S.deck       = makeDeck(settings.decks);
