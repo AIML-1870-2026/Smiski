@@ -564,7 +564,6 @@
 <audio id="bg-music" loop preload="none">
   <source src="ScreenRecording_02-24-2026%2022-39-58_1%20copy.mp4" type="video/mp4">
 </audio>
-<audio id="flip-sfx" src="240776__f4ngy__card-flip.wav" preload="auto"></audio>
 
 <!-- Particle canvas overlay -->
 <canvas id="particle-canvas"></canvas>
@@ -773,7 +772,6 @@ const settings = {
 const Audio = (() => {
   let ctx, sfxG;
   const bgMusic = document.getElementById('bg-music');
-  const flipSfx = document.getElementById('flip-sfx');
 
   function boot() {
     if (ctx) return;
@@ -812,10 +810,6 @@ const Audio = (() => {
   return {
     click()    { boot(); tone(820, 'square',   0.05, 0.18); },
     hover()    { boot(); tone(620, 'square',   0.04, 0.07); },
-    cardDeal() { boot(); noise(0.08, 0.16); tone(300, 'triangle', 0.1, 0.12); },
-    cardFlip() {
-      try { flipSfx.currentTime = 0; flipSfx.play().catch(() => {}); } catch(e) {}
-    },
     chip()     { boot(); tone(920, 'sine', 0.07, 0.22); tone(1120, 'sine', 0.05, 0.18, 0.04); },
     win()      { boot(); [523,659,784,1046].forEach((f,i) => tone(f,'sine',0.22,0.32,i*.1)); },
     lose()     { boot(); [400,340,280,220].forEach((f,i) => tone(f,'sawtooth',0.22,0.28,i*.09)); },
@@ -1344,7 +1338,6 @@ function deal() {
     const card = S.deck.pop(); card.hidden = seq[i].h;
     seq[i].t.push(card);
     if (!card.hidden) addCountedCard(card);
-    Audio.cardDeal();
     // Animate only the newly added card
     if (seq[i].t === ph) animLastPlayer();
     else animLastDealer();
@@ -1407,7 +1400,7 @@ function dealPoss() {
     const card = S.deck.pop(); card.hidden = seq[i].h;
     seq[i].t.push(card);
     if (!card.hidden) addCountedCard(card);
-    Audio.cardDeal(); renderCards(); i++;
+    renderCards(); i++;
     setTimeout(next, 275);
   }
   next();
@@ -1420,7 +1413,7 @@ function hit() {
   const card = S.deck.pop(); card.hidden = false;
   hand.push(card);
   addCountedCard(card);
-  Audio.cardDeal(); renderCards(); animLastPlayer();
+  renderCards(); animLastPlayer();
 
   const sc = scoreHand(hand);
   if (sc > 21) {
@@ -1457,7 +1450,7 @@ function doubleDown() {
   const card = S.deck.pop(); card.hidden = false;
   hand.push(card);
   addCountedCard(card);
-  Audio.cardDeal(); renderCards(); animLastPlayer();
+  renderCards(); animLastPlayer();
   renderBalance();
   const sc = scoreHand(hand);
   if (sc > 21) {
@@ -1521,7 +1514,6 @@ function revealDealer() {
     if (hidden && cardEls[idx]) {
       setTimeout(() => {
         cardEls[idx].classList.add('flip-in');
-        Audio.cardFlip();
         // Remove animation class after it completes
         cardEls[idx].addEventListener('animationend', () => {
           cardEls[idx].classList.remove('flip-in');
@@ -1544,7 +1536,7 @@ function runDealer() {
       const c = S.deck.pop(); c.hidden = false;
       S.dealerHand.push(c);
       addCountedCard(c);
-      Audio.cardDeal(); renderCards(); animLastDealer();
+      renderCards(); animLastDealer();
       setTimeout(step, 680);
     } else {
       S.phase = 'round_complete';
