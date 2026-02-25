@@ -180,11 +180,7 @@ Configurable before clicking "Deal Me In":
 ### Sound Effects
 | Trigger | Sound |
 |---|---|
-| Hover over any button | Soft click / tick sound |
-| Click any button | Distinct click / tap sound |
-| Card dealt | Card slide/slap sound |
 | Card flipped | Card flip/whoosh sound |
-| Chips placed | Chip clink/rattle |
 | Player wins | Upbeat chime / coin jingle |
 | Player loses | Low thud / sad trombone sting |
 | Blackjack | Celebratory fanfare |
@@ -192,10 +188,9 @@ Configurable before clicking "Deal Me In":
 | Push | Neutral "ping" |
 
 ### Audio Implementation Notes
-- All SFX generated via the **Web Audio API** directly (oscillators + noise buffers — no third-party library)
+- Outcome SFX (win, lose, bust, blackjack, push) generated via the **Web Audio API** directly (oscillators + noise buffers — no third-party library)
 - Card flip sound uses a pre-loaded `.wav` file (`240776__f4ngy__card-flip.wav`) via an `<audio>` element
 - Background music uses an `<audio loop>` element; music and SFX run on separate gain nodes so the toggle only affects music
-- Hover sounds are subtle and not intrusive (low volume, ~50ms)
 
 ---
 
@@ -216,7 +211,7 @@ blackjack/
 ```
 
 ### Key Functions / Modules
-- `Audio` (IIFE) — Web Audio API engine; exposes `click`, `hover`, `cardDeal`, `cardFlip`, `chip`, `win`, `lose`, `bust`, `blackjack`, `push`, `toggleMusic`
+- `Audio` (IIFE) — Web Audio API engine; exposes `cardFlip`, `win`, `lose`, `bust`, `blackjack`, `push`, `toggleMusic`
 - `renderCards` / `renderBalance` / `renderButtons` / `renderPoss` — DOM update functions
 - `deal` / `dealPoss` — dealing sequence with staggered animation
 - `hit` / `stand` / `doubleDown` / `split` — player action handlers
@@ -243,8 +238,6 @@ blackjack/
 | Balance hits $0 | Possessions Mode activates |
 | All possessions lost | Game over screen shown |
 | Music toggle | Music stops/starts without affecting SFX |
-| Hover over button | Subtle hover sound plays |
-| Click button | Click sound plays |
 | Dealer shows Ace (insurance ON) | Insurance popup appears |
 | Player takes insurance, dealer has BJ | Insurance pays 2:1; hand resolves as dealer BJ |
 | Player declines insurance, dealer has BJ | Dealer wins normally |
