@@ -1110,7 +1110,6 @@ function checkCol(){
   if(PL.dead)return;
   for(const o of obs){
     if(!o.on)continue;
-    if(o.t==='anem'&&!o.expanded)continue;
     const hb=o.hb();
     const pt=PL.y-42,pb=PL.y,pl=PL.x-16,pr=PL.x+16;
     if(pr>hb.x&&pl<hb.x+hb.w&&pb>hb.y&&pt<hb.y+hb.h){
@@ -1380,7 +1379,7 @@ function drawEditor(){
     cx.beginPath(); cx.roundRect(bx,by,122,22,4); cx.fill();
     cx.fillStyle=edSelected===type?'#111':'#DDD';
     cx.font='11px sans-serif';
-    cx.fillText(type,bx+6,by+15);
+    cx.fillText(type==='arm'?'Blade':type,bx+6,by+15);
   });
 
   // Biome selector
