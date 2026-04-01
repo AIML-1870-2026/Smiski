@@ -239,7 +239,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--ac
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://unpkg.com/globe.gl"></script>
 <script>
 const KEY = 'LOWvtLzuGPGdRRvsSv5BKCBq71qpDTmAaq0QHKaS';
 const LD = 384400; // km per lunar distance
@@ -556,23 +556,30 @@ async function loadAPOD() {
 
 // ── 3D GLOBE ───────────────────────────────────────────────────────────────
 
-// Creates a floating name label as a Three.js Sprite using a canvas texture
-function makeNameSprite(text, T, hexColor) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256; canvas.height = 54;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, 256, 54);
-  ctx.font = 'bold 19px Nunito,sans-serif';
-  ctx.fillStyle = hexColor || '#c87eff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const label = text.length > 18 ? text.slice(0, 16) + '\u2026' : text;
-  ctx.fillText(label, 128, 27);
-  const tex = new T.CanvasTexture(canvas);
-  const mat = new T.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
-  const sp = new T.Sprite(mat);
-  sp.scale.set(48, 10, 1);
-  return sp;
+function showDetail(obj) {
+  if (obj.isMoon) {
+    document.getElementById('asteroid-detail').innerHTML = `
+      <div class="det-row"><span class="det-k">OBJECT</span><span class="det-v" style="color:#c8c8ff">&#9790; Moon \u2014 Reference Body</span></div>
+      <div class="det-row"><span class="det-k">LUNAR DISTANCE</span><span class="det-v" style="color:#ffe566;font-size:16px;font-weight:900">1.000 LD</span></div>
+      <div class="det-row"><span class="det-k">IN KM</span><span class="det-v">384,400 km</span></div>
+      <div class="det-row"><span class="det-k">ORBITAL PERIOD</span><span class="det-v">27.3 days</span></div>
+      <div class="det-row"><span class="det-k">ORBITAL SPEED</span><span class="det-v">3,683 km/h</span></div>
+      <div class="det-row"><span class="det-k">NOTE</span><span class="det-v">1 LD = 384,400 km \u2014 the reference unit for all asteroid miss distances</span></div>`;
+    return;
+  }
+  const { name, dist_km, dist_ld, date, v_kmh, pha } = obj;
+  const ld = dist_ld.toFixed(3);
+  const ldNum = parseFloat(ld);
+  const ldCtx = ldNum < 1 ? 'closer than the Moon!' : ldNum < 5 ? 'within 5 lunar distances' : `${ldNum.toFixed(1)}\u00d7 farther than the Moon`;
+  const velStr = v_kmh ? `${Math.round(v_kmh).toLocaleString()} km/h \u00a0(${Math.round(v_kmh / 27600)}\u00d7 ISS speed)` : 'N/A';
+  document.getElementById('asteroid-detail').innerHTML = `
+    <div class="det-row"><span class="det-k">OBJECT</span><span class="det-v" style="color:${pha ? '#ff9090' : 'var(--accent)'}">&#9684; ${name}</span></div>
+    <div class="det-row"><span class="det-k">CLOSE APPROACH</span><span class="det-v">${date}</span></div>
+    <div class="det-row"><span class="det-k">LUNAR DISTANCE</span><span class="det-v" style="color:#ffe566;font-size:16px;font-weight:900">${ld} LD \u2014 ${ldCtx}</span></div>
+    <div class="det-row"><span class="det-k">IN KM</span><span class="det-v">${Math.round(dist_km).toLocaleString()} km</span></div>
+    <div class="det-row"><span class="det-k">INTUITIVE</span><span class="det-v">${fmtDistVerbose(dist_km)}</span></div>
+    <div class="det-row"><span class="det-k">VELOCITY</span><span class="det-v">${velStr}</span></div>
+    <div class="det-row"><span class="det-k">HAZARDOUS</span><span class="det-v" style="color:${pha ? '#ff7070' : 'var(--accent)'}">${pha ? 'YES \u2014 Potentially Hazardous Asteroid' : 'No'}</span></div>`;
 }
 
 function initGlobe() {
@@ -580,186 +587,105 @@ function initGlobe() {
   globeReady = true;
 
   const wrap = document.getElementById('globe-wrap');
-  const T = window.THREE;
-  if (!T) {
-    document.getElementById('globe-status').textContent = 'THREE.js failed to load \u2014 try refreshing.';
+
+  if (typeof Globe === 'undefined') {
+    document.getElementById('globe-status').textContent = 'Globe library failed to load \u2014 try refreshing.';
     globeReady = false;
     return;
   }
 
-  // Globe radius = 100 units, Y-up coordinate system
-  function distToR(km) {
+  const T = window.THREE;
+
+  // Map miss distance km → globe.gl altitude (0 = surface, ~3.3 = far)
+  function distToAlt(km) {
     const ld = Math.max(0.01, km / LD);
     const t = Math.min(1, Math.log10(ld / 0.01) / Math.log10(10000));
-    return 130 + t * 350; // 130–480 scene units
-  }
-  function toXYZ(lat, lng, r) {
-    const phi = (90 - lat) * Math.PI / 180;
-    const theta = lng * Math.PI / 180;
-    return new T.Vector3(
-      r * Math.sin(phi) * Math.cos(theta),
-      r * Math.cos(phi),
-      r * Math.sin(phi) * Math.sin(theta)
-    );
+    return 0.3 + t * 3;
   }
 
-  const MOON_R = distToR(LD);   // ~305 scene units
-  const MOON_ORBIT_SPEED = 0.003;
-  let moonAngle = Math.random() * Math.PI * 2;
+  const MOON_ALT = distToAlt(LD); // moon at exactly 1 LD
 
-  // ── Click handler ──
-  function showDetail(obj) {
-    if (obj.isMoon) {
-      document.getElementById('asteroid-detail').innerHTML = `
-        <div class="det-row"><span class="det-k">OBJECT</span><span class="det-v" style="color:#c8c8ff">&#9790; Moon \u2014 Reference Body</span></div>
-        <div class="det-row"><span class="det-k">LUNAR DISTANCE</span><span class="det-v" style="color:#ffe566;font-size:16px;font-weight:900">1.000 LD</span></div>
-        <div class="det-row"><span class="det-k">IN KM</span><span class="det-v">384,400 km</span></div>
-        <div class="det-row"><span class="det-k">ORBITAL PERIOD</span><span class="det-v">27.3 days</span></div>
-        <div class="det-row"><span class="det-k">ORBITAL SPEED</span><span class="det-v">3,683 km/h</span></div>
-        <div class="det-row"><span class="det-k">NOTE</span><span class="det-v">1 LD = 384,400 km \u2014 the reference unit for all asteroid miss distances</span></div>`;
-      return;
-    }
-    const { name, dist_km, dist_ld, date, v_kmh, pha } = obj;
-    const ld = dist_ld.toFixed(3);
-    const ldNum = parseFloat(ld);
-    const ldCtx = ldNum < 1 ? 'closer than the Moon!' : ldNum < 5 ? 'within 5 lunar distances' : `${ldNum.toFixed(1)}\u00d7 farther than the Moon`;
-    const velStr = v_kmh ? `${Math.round(v_kmh).toLocaleString()} km/h \u00a0(${Math.round(v_kmh / 27600)}\u00d7 ISS speed)` : 'N/A';
-    document.getElementById('asteroid-detail').innerHTML = `
-      <div class="det-row"><span class="det-k">OBJECT</span><span class="det-v" style="color:${pha ? '#ff9090' : 'var(--accent)'}">&#9684; ${name}</span></div>
-      <div class="det-row"><span class="det-k">CLOSE APPROACH</span><span class="det-v">${date}</span></div>
-      <div class="det-row"><span class="det-k">LUNAR DISTANCE</span><span class="det-v" style="color:#ffe566;font-size:16px;font-weight:900">${ld} LD \u2014 ${ldCtx}</span></div>
-      <div class="det-row"><span class="det-k">IN KM</span><span class="det-v">${Math.round(dist_km).toLocaleString()} km</span></div>
-      <div class="det-row"><span class="det-k">INTUITIVE</span><span class="det-v">${fmtDistVerbose(dist_km)}</span></div>
-      <div class="det-row"><span class="det-k">VELOCITY</span><span class="det-v">${velStr}</span></div>
-      <div class="det-row"><span class="det-k">HAZARDOUS</span><span class="det-v" style="color:${pha ? '#ff7070' : 'var(--accent)'}">${pha ? 'YES \u2014 Potentially Hazardous Asteroid' : 'No'}</span></div>`;
-  }
+  // Asteroid data: each item includes keys showDetail() expects
+  const asteroidData = neoData.map(({obj, ca}) => {
+    const km = parseFloat(ca.miss_distance.kilometers);
+    return {
+      lat: (Math.random() - 0.5) * 160,
+      lng: Math.random() * 360 - 180,
+      alt: distToAlt(km),
+      dist_km: km,
+      dist_ld: km / LD,
+      name: obj.name.replace(/[()]/g, '').trim(),
+      pha: obj.is_potentially_hazardous_asteroid,
+      date: ca.close_approach_date,
+      v_kmh: parseFloat(ca.relative_velocity.kilometers_per_hour),
+    };
+  });
 
-  // ── Pure THREE.js scene — no globe.gl ──
-  const W = wrap.clientWidth || 900, H = 560;
-
-  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(W, H);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  wrap.appendChild(renderer.domElement);
-
-  const scene = new T.Scene();
-
-  const camera = new T.PerspectiveCamera(60, W / H, 1, 5000);
-  camera.position.set(0, 80, 550);
-
-  let controls = null;
-  if (T.OrbitControls) {
-    controls = new T.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.4;
-    controls.minDistance = 130;
-    controls.maxDistance = 1200;
-  } else {
-    // Fallback: simple mouse-drag rotation when OrbitControls CDN fails
-    let drag = false, lastX = 0, lastY = 0;
-    renderer.domElement.addEventListener('mousedown', e => { drag = true; lastX = e.clientX; lastY = e.clientY; });
-    renderer.domElement.addEventListener('mouseup', () => { drag = false; });
-    renderer.domElement.addEventListener('mousemove', e => {
-      if (!drag) return;
-      const dx = e.clientX - lastX, dy = e.clientY - lastY;
-      camera.position.applyQuaternion(
-        new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0), -dx * 0.005));
-      lastX = e.clientX; lastY = e.clientY;
-    });
-    renderer.domElement.addEventListener('wheel', e => {
-      const d = Math.max(130, Math.min(1200, camera.position.length() + e.deltaY * 0.5));
-      camera.position.setLength(d);
-    });
-  }
-
-  // Lighting
-  scene.add(new T.AmbientLight(0x888888));
-  const sun = new T.DirectionalLight(0xffffff, 1.2);
-  sun.position.set(400, 300, 200);
-  scene.add(sun);
-  scene.add(Object.assign(new T.DirectionalLight(0x334466, 0.4), { position: new T.Vector3(-300, -200, -300) }));
-
-  // Earth — blue marble texture, shows solid blue while texture loads
-  const earthMesh = new T.Mesh(
-    new T.SphereGeometry(100, 64, 64),
-    new T.MeshPhongMaterial({
-      map: new T.TextureLoader().load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
-      color: 0x1a66cc, specular: 0x333333, shininess: 15
+  // ── globe.gl Earth ──
+  const globe = Globe()(wrap)
+    .width(wrap.clientWidth || 900)
+    .height(560)
+    .backgroundColor('#000510')
+    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+    // Asteroids as IcosahedronGeometry spheres on the custom layer
+    .customLayerData(asteroidData)
+    .customThreeObject(d => {
+      const color = d.pha ? 0xe84040 : 0x00c8b4;
+      const size = d.pha ? 8 : 5;
+      return new T.Mesh(
+        new T.IcosahedronGeometry(size, 1),
+        new T.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: d.pha ? 0.6 : 0.4, flatShading: true, shininess: 40 })
+      );
     })
-  );
-  scene.add(earthMesh);
+    .customThreeObjectUpdate((mesh, d) => {
+      const p = globe.getCoords(d.lat, d.lng, d.alt);
+      mesh.position.set(p.x, p.y, p.z);
+    })
+    .onCustomLayerClick(d => showDetail(d));
 
-  // Moon orbit ring
+  // Globe built-in OrbitControls
+  globe.controls().autoRotate = true;
+  globe.controls().autoRotateSpeed = 0.4;
+
+  // ── Moon + orbit ring added directly to Three.js scene ──
+  const scene = globe.scene();
+
+  const moonMesh = new T.Mesh(
+    new T.SphereGeometry(14, 32, 32),
+    new T.MeshPhongMaterial({ color: 0xccccdd, emissive: 0x334466, emissiveIntensity: 0.5, shininess: 10 })
+  );
+  scene.add(moonMesh);
+
+  const MOON_RING_R = 100 * (1 + MOON_ALT);
   const orbitRing = new T.Mesh(
-    new T.RingGeometry(MOON_R - 2, MOON_R + 2, 180),
-    new T.MeshBasicMaterial({ color: 0x8888cc, side: T.DoubleSide, transparent: true, opacity: 0.4 })
+    new T.RingGeometry(MOON_RING_R - 1.5, MOON_RING_R + 1.5, 180),
+    new T.MeshBasicMaterial({ color: 0x8888cc, side: T.DoubleSide, transparent: true, opacity: 0.3 })
   );
   orbitRing.rotation.x = Math.PI / 2;
   scene.add(orbitRing);
 
-  // Asteroid meshes — IcosahedronGeometry for rocky look
-  const clickable = [];
-  neoData.forEach(({obj, ca}) => {
-    const km = parseFloat(ca.miss_distance.kilometers);
-    const r = distToR(km);
-    const pos = toXYZ((Math.random() - 0.5) * 160, Math.random() * 360, r);
-    const pha = obj.is_potentially_hazardous_asteroid;
-    const color = pha ? 0xe84040 : 0x00c8b4;
-    const size = pha ? 8 : 5;
-    const mesh = new T.Mesh(
-      new T.IcosahedronGeometry(size, 1),
-      new T.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: pha ? 0.6 : 0.4, shininess: 40, flatShading: true })
-    );
-    mesh.position.copy(pos);
-    mesh.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, 0);
-    mesh.userData = {
-      isAsteroid: true,
-      name: obj.name.replace(/[()]/g, '').trim(),
-      dist_km: km, dist_ld: km / LD,
-      date: ca.close_approach_date,
-      v_kmh: parseFloat(ca.relative_velocity.kilometers_per_hour),
-      pha,
-    };
-    scene.add(mesh);
-    clickable.push(mesh);
-  });
+  // Moon orbit animation loop
+  let moonAngle = Math.random() * Math.PI * 2;
+  (function orbitMoon() {
+    requestAnimationFrame(orbitMoon);
+    moonAngle += 0.003;
+    const p = globe.getCoords(0, (moonAngle * 180) / Math.PI, MOON_ALT);
+    if (p) moonMesh.position.set(p.x, p.y, p.z);
+  })();
 
-  // Moon mesh
-  const moonMesh = new T.Mesh(
-    new T.SphereGeometry(12, 32, 32),
-    new T.MeshPhongMaterial({ color: 0xccccdd, emissive: 0x334455, emissiveIntensity: 0.4, shininess: 10 })
-  );
-  moonMesh.userData = { isMoon: true };
-  scene.add(moonMesh);
-  clickable.push(moonMesh);
-
-  // Raycaster for click detection
+  // Raycaster for moon clicks (asteroid clicks handled by onCustomLayerClick above)
   const raycaster = new T.Raycaster();
   wrap.addEventListener('click', e => {
     const rect = wrap.getBoundingClientRect();
-    const mouse = new T.Vector2(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    raycaster.setFromCamera(
+      new T.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      ),
+      globe.camera()
     );
-    raycaster.setFromCamera(mouse, camera);
-    const hits = raycaster.intersectObjects(clickable);
-    if (hits.length) showDetail(hits[0].object.userData);
+    if (raycaster.intersectObject(moonMesh).length) showDetail({ isMoon: true });
   });
-
-  // Render loop — moon orbit + Earth rotation + OrbitControls damping
-  function animate() {
-    requestAnimationFrame(animate);
-    moonAngle += MOON_ORBIT_SPEED;
-    const mp = toXYZ(0, moonAngle * 180 / Math.PI, MOON_R);
-    moonMesh.position.copy(mp);
-    earthMesh.rotation.y += 0.0008;
-    if (controls) controls.update();
-    else camera.position.applyQuaternion(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0), 0.002));
-    renderer.render(scene, camera);
-  }
-  animate();
 
   const phaCount = neoData.filter(d => d.obj.is_potentially_hazardous_asteroid).length;
   document.getElementById('globe-status').textContent =
