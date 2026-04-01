@@ -146,19 +146,22 @@ Rendered by `initGlobe()` — called lazily when the tab is first activated.
 - Container: `#globe-wrap`, `560px` tall, dark background
 - Auto-rotates at speed 0.35; zoom enabled; initial altitude 3.5
 
-**Object rendering:**
+**Object rendering — all objects injected directly into THREE.js scene inside `onGlobeReady`:**
+- Globe.gl's `customThreeObjectsData` / `customThreeObjectUpdate` pipeline is NOT used (unreliable for arbitrary 3D positions); all meshes are added via `scene.add()` instead
 - All asteroids from `neoData` (the full 7-day NeoWs feed, typically 50–100 objects)
-- Each asteroid assigned a random lat/lng and an altitude derived from `distToAlt(km)` — a log-scale function compressing 0.01–1000 LD into globe.gl altitude units 0.3–3.8
-- Positions set via `myGlobe.getCoords(lat, lng, alt)` in `customThreeObjectUpdate` — uses globe.gl's own coordinate transform
-- Non-hazardous asteroids: teal spheres (`0x00c8b4`), radius 3.5
-- Potentially hazardous asteroids (PHAs): red spheres (`0xe84040`), radius 5.5; detected via separate `pha=true` CAD API request
-- Moon: light purple/blue sphere (`0xd8d8ff`), radius 10, placed at `alt = distToAlt(384400 km)` = 1 LD
+- Each asteroid assigned a random lat/lng; altitude derived from `distToAlt(km)` (log-scale, 0.3–3.8 globe-radii above surface)
+- Positions computed with `myGlobe.getCoords(lat, lng, alt)` inside `onGlobeReady` where globe is fully initialized
+- Non-hazardous asteroids: teal `IcosahedronGeometry` (detail 1, `flatShading: true`) — rocky, faceted look; radius 3.5
+- Potentially hazardous asteroids: red `IcosahedronGeometry`, radius 5.5; PHA flag from `obj.is_potentially_hazardous_asteroid`
+- Each asteroid has a floating `makeNameSprite` label positioned just above the mesh
+- Moon: `SphereGeometry` (radius 10) with a procedurally generated crater texture (canvas-based grey with radial-gradient blobs); slow Y-axis rotation animation
+- Click detection uses THREE.js `Raycaster` against all meshes; no globe.gl click handler needed
 
 **Moon orbit:**
 - Orbits at `MOON_ORBIT_SPEED = 0.003` rad/frame via `requestAnimationFrame` inside `onGlobeReady`
 - Equatorial orbit (lat = 0), longitude increments each frame; position computed via `myGlobe.getCoords(0, lng, MOON_ALT)`
-- THREE.js group position updated directly each frame (bypasses reactive data layer)
-- A visual ring at the Moon's orbital radius, computed as `(MOON_ALT + 1) * 100` scene units (semi-transparent blue-purple, `RingGeometry`)
+- Moon mesh position updated directly each frame
+- A visual ring at the Moon's orbital radius, `(MOON_ALT + 1) * 100` scene units (semi-transparent blue-purple, `RingGeometry`)
 - A second inner reference ring at scene unit 130 (roughly LEO reference, teal, very faint)
 
 **Lighting:**
