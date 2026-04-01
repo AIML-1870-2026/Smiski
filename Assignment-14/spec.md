@@ -137,14 +137,16 @@ Rendered by `renderWeek()`. Requires `neoData` to be populated.
 Rendered by `initGlobe()` — called lazily when the tab is first activated.
 
 **Libraries:**
-- `globe.gl` v2.31.0 (via unpkg CDN)
 - `three.js` r128 (via cdnjs CDN)
+- `three/examples/js/controls/OrbitControls.js` r128 (via jsdelivr CDN)
+- globe.gl removed — pure THREE.js scene gives full, reliable control
 
-**Globe setup:**
-- Earth texture: `three-globe` blue marble image
-- Background: `three-globe` night sky image
-- Container: `#globe-wrap`, `560px` tall, dark background
-- Auto-rotates at speed 0.35; zoom enabled; initial altitude 3.5
+**Scene setup:**
+- Pure THREE.js `WebGLRenderer` (alpha: true — CSS star canvas shows through)
+- Earth: `SphereGeometry(100)` with blue marble texture via `TextureLoader`; solid blue while texture loads; slow Y-axis rotation
+- Background: transparent canvas overlaid on page CSS star field
+- Container: `#globe-wrap`, `560px` tall; renderer canvas appended directly
+- `OrbitControls` with damping, auto-rotate speed 0.4, zoom enabled; camera starts at z=550
 
 **Object rendering:**
 - Uses globe.gl's `customThreeObjectsData` / `customThreeObject` / `customThreeObjectUpdate` pipeline
@@ -157,7 +159,8 @@ Rendered by `initGlobe()` — called lazily when the tab is first activated.
 - Each object has a floating `makeNameSprite` label
 - Moon: grey `SphereGeometry` (radius 12) with emissive glow; click handled via `onCustomObjectClick`
 - `animateIn: false` and a `requestAnimationFrame` delay before `Globe()` ensure the container is laid out before WebGL initializes
-- `myGlobe.scene()` and `myGlobe.camera()` are accessed **synchronously** right after `Globe()` — no `onGlobeReady` callback used; objects appear immediately without waiting for Earth texture download
+- All meshes added via `scene.add()` in a single synchronous `initGlobe()` call — no callbacks, no texture-load gating; asteroids and moon appear on the first rendered frame
+- Click detection via `THREE.Raycaster` on `wrap` click events
 
 **Moon orbit:**
 - Orbits at `MOON_ORBIT_SPEED = 0.003` rad/frame via `requestAnimationFrame` inside `onGlobeReady`

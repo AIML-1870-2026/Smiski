@@ -238,8 +238,8 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--ac
   </div>
 </div>
 
-<script src="https://unpkg.com/globe.gl@2.31.0/dist/globe.gl.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 const KEY = 'LOWvtLzuGPGdRRvsSv5BKCBq71qpDTmAaq0QHKaS';
 const LD = 384400; // km per lunar distance
@@ -575,66 +575,36 @@ function makeNameSprite(text, T, hexColor) {
   return sp;
 }
 
-async function initGlobe() {
+function initGlobe() {
   if (globeReady) return;
   globeReady = true;
 
   const wrap = document.getElementById('globe-wrap');
   const T = window.THREE;
-  if (!T) { document.getElementById('globe-status').textContent = 'THREE.js failed to load \u2014 try refreshing.'; return; }
+  if (!T || !T.OrbitControls) {
+    document.getElementById('globe-status').textContent = 'THREE.js failed to load \u2014 try refreshing.';
+    return;
+  }
 
-  // Wait one frame so the tab panel finishes layout before Globe() measures the container
-  await new Promise(r => requestAnimationFrame(r));
-
-  document.getElementById('globe-status').textContent = 'Building 3D scene\u2026';
-
-  // globe.gl uses Y-up scene, globe radius = 100 units
-  // alt=0 → on surface (r=100), alt=1 → r=200, etc.
-  function distToAlt(km) {
+  // Globe radius = 100 units, Y-up coordinate system
+  function distToR(km) {
     const ld = Math.max(0.01, km / LD);
     const t = Math.min(1, Math.log10(ld / 0.01) / Math.log10(10000));
-    return (130 + t * 350) / 100 - 1; // scene units 130–480 → alt 0.3–3.8
+    return 130 + t * 350; // 130–480 scene units
   }
-
-  // Manual lat/lng/alt → scene XYZ (same formula as globe.gl getCoords, avoids timing issues)
-  function toXYZ(lat, lng, alt) {
+  function toXYZ(lat, lng, r) {
     const phi = (90 - lat) * Math.PI / 180;
-    const theta = (lng + 180) * Math.PI / 180;
-    const r = 100 * (1 + alt);
-    return { sx: r * Math.sin(phi) * Math.cos(theta),
-             sy: r * Math.cos(phi),
-             sz: r * Math.sin(phi) * Math.sin(theta) };
+    const theta = lng * Math.PI / 180;
+    return new T.Vector3(
+      r * Math.sin(phi) * Math.cos(theta),
+      r * Math.cos(phi),
+      r * Math.sin(phi) * Math.sin(theta)
+    );
   }
 
-  const MOON_ALT = distToAlt(LD);
-  const MOON_SCENE_R = (MOON_ALT + 1) * 100;
+  const MOON_R = distToR(LD);   // ~305 scene units
   const MOON_ORBIT_SPEED = 0.003;
   let moonAngle = Math.random() * Math.PI * 2;
-
-  // Build asteroid objects — bake XYZ into each object for use in customThreeObjectUpdate
-  const asteroidObjs = neoData.map(({obj, ca}) => {
-    const km = parseFloat(ca.miss_distance.kilometers);
-    const lat = (Math.random() - 0.5) * 160;
-    const lng = Math.random() * 360 - 180;
-    const alt = distToAlt(km);
-    return {
-      isAsteroid: true,
-      name: obj.name.replace(/[()]/g, '').trim(),
-      dist_km: km, dist_ld: km / LD,
-      date: ca.close_approach_date,
-      v_kmh: parseFloat(ca.relative_velocity.kilometers_per_hour),
-      pha: obj.is_potentially_hazardous_asteroid,
-      ...toXYZ(lat, lng, alt),
-    };
-  });
-
-  const moonLng0 = (moonAngle * 180 / Math.PI) % 360;
-  const moonDataObj = {
-    isMoon: true, name: 'Moon', dist_km: LD, dist_ld: 1.0,
-    ...toXYZ(0, moonLng0, MOON_ALT),
-  };
-
-  const allObjs = [...asteroidObjs, moonDataObj];
 
   // ── Click handler ──
   function showDetail(obj) {
@@ -663,85 +633,116 @@ async function initGlobe() {
       <div class="det-row"><span class="det-k">HAZARDOUS</span><span class="det-v" style="color:${pha ? '#ff7070' : 'var(--accent)'}">${pha ? 'YES \u2014 Potentially Hazardous Asteroid' : 'No'}</span></div>`;
   }
 
-  // ── Globe setup ──
-  const myGlobe = Globe({ animateIn: false })(wrap);
-  myGlobe
-    .width(wrap.offsetWidth || 900)
-    .height(560)
-    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
-    .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
-    .customThreeObjectsData(allObjs)
-    .customThreeObject(obj => {
-      const group = new T.Group();
-      if (obj.isMoon) {
-        const mat = new T.MeshPhongMaterial({ color: 0xccccdd, emissive: 0x334455, emissiveIntensity: 0.4, shininess: 10 });
-        group.add(new T.Mesh(new T.SphereGeometry(12, 32, 32), mat));
-        const lbl = makeNameSprite('Moon', T, '#c8c8ff');
-        lbl.position.set(0, 24, 0);
-        group.add(lbl);
-      } else {
-        const color = obj.pha ? 0xe84040 : 0x00c8b4;
-        const size = obj.pha ? 8 : 5;
-        const mat = new T.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: obj.pha ? 0.6 : 0.4, shininess: 50, flatShading: true });
-        group.add(new T.Mesh(new T.IcosahedronGeometry(size, 1), mat));
-        const lbl = makeNameSprite(obj.name, T, obj.pha ? '#ff9090' : '#c87eff');
-        lbl.position.set(0, size + 14, 0);
-        group.add(lbl);
-      }
-      return group;
-    })
-    .customThreeObjectUpdate((group, obj) => {
-      group.position.set(obj.sx, obj.sy, obj.sz);
-    })
-    .onCustomObjectClick(showDetail);
+  // ── Pure THREE.js scene — no globe.gl ──
+  const W = wrap.clientWidth || 900, H = 560;
 
-  // ── scene() and camera() are available immediately after Globe() — no need to wait for onGlobeReady ──
-  const scene = myGlobe.scene();
-  const camera = myGlobe.camera();
+  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  wrap.appendChild(renderer.domElement);
+
+  const scene = new T.Scene();
+
+  const camera = new T.PerspectiveCamera(60, W / H, 1, 5000);
+  camera.position.set(0, 80, 550);
+
+  const controls = new T.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.4;
+  controls.minDistance = 130;
+  controls.maxDistance = 1200;
 
   // Lighting
   scene.add(new T.AmbientLight(0x888888));
   const sun = new T.DirectionalLight(0xffffff, 1.2);
   sun.position.set(400, 300, 200);
   scene.add(sun);
-  const fill = new T.DirectionalLight(0x334466, 0.35);
-  fill.position.set(-300, -200, -300);
-  scene.add(fill);
+  scene.add(Object.assign(new T.DirectionalLight(0x334466, 0.4), { position: new T.Vector3(-300, -200, -300) }));
+
+  // Earth — blue marble texture, shows solid blue while texture loads
+  const earthMesh = new T.Mesh(
+    new T.SphereGeometry(100, 64, 64),
+    new T.MeshPhongMaterial({
+      map: new T.TextureLoader().load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
+      color: 0x1a66cc, specular: 0x333333, shininess: 15
+    })
+  );
+  scene.add(earthMesh);
 
   // Moon orbit ring
-  const orbitGeo = new T.RingGeometry(MOON_SCENE_R - 2, MOON_SCENE_R + 2, 180);
-  const orbitMat = new T.MeshBasicMaterial({ color: 0x8888cc, side: T.DoubleSide, transparent: true, opacity: 0.4 });
-  const orbitRing = new T.Mesh(orbitGeo, orbitMat);
+  const orbitRing = new T.Mesh(
+    new T.RingGeometry(MOON_R - 2, MOON_R + 2, 180),
+    new T.MeshBasicMaterial({ color: 0x8888cc, side: T.DoubleSide, transparent: true, opacity: 0.4 })
+  );
   orbitRing.rotation.x = Math.PI / 2;
   scene.add(orbitRing);
 
-  // LEO reference ring
-  const innerRing = new T.Mesh(
-    new T.RingGeometry(129, 131, 128),
-    new T.MeshBasicMaterial({ color: 0x00c8b4, side: T.DoubleSide, transparent: true, opacity: 0.12 })
+  // Asteroid meshes — IcosahedronGeometry for rocky look
+  const clickable = [];
+  neoData.forEach(({obj, ca}) => {
+    const km = parseFloat(ca.miss_distance.kilometers);
+    const r = distToR(km);
+    const pos = toXYZ((Math.random() - 0.5) * 160, Math.random() * 360, r);
+    const pha = obj.is_potentially_hazardous_asteroid;
+    const color = pha ? 0xe84040 : 0x00c8b4;
+    const size = pha ? 8 : 5;
+    const mesh = new T.Mesh(
+      new T.IcosahedronGeometry(size, 1),
+      new T.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: pha ? 0.6 : 0.4, shininess: 40, flatShading: true })
+    );
+    mesh.position.copy(pos);
+    mesh.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, 0);
+    mesh.userData = {
+      isAsteroid: true,
+      name: obj.name.replace(/[()]/g, '').trim(),
+      dist_km: km, dist_ld: km / LD,
+      date: ca.close_approach_date,
+      v_kmh: parseFloat(ca.relative_velocity.kilometers_per_hour),
+      pha,
+    };
+    scene.add(mesh);
+    clickable.push(mesh);
+  });
+
+  // Moon mesh
+  const moonMesh = new T.Mesh(
+    new T.SphereGeometry(12, 32, 32),
+    new T.MeshPhongMaterial({ color: 0xccccdd, emissive: 0x334455, emissiveIntensity: 0.4, shininess: 10 })
   );
-  innerRing.rotation.x = Math.PI / 2;
-  scene.add(innerRing);
+  moonMesh.userData = { isMoon: true };
+  scene.add(moonMesh);
+  clickable.push(moonMesh);
 
-  // Moon orbit animation
-  function animateMoon() {
+  // Raycaster for click detection
+  const raycaster = new T.Raycaster();
+  wrap.addEventListener('click', e => {
+    const rect = wrap.getBoundingClientRect();
+    const mouse = new T.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(clickable);
+    if (hits.length) showDetail(hits[0].object.userData);
+  });
+
+  // Render loop — moon orbit + Earth rotation + OrbitControls damping
+  function animate() {
+    requestAnimationFrame(animate);
     moonAngle += MOON_ORBIT_SPEED;
-    const { sx, sy, sz } = toXYZ(0, (moonAngle * 180 / Math.PI) % 360, MOON_ALT);
-    moonDataObj.sx = sx; moonDataObj.sy = sy; moonDataObj.sz = sz;
-    const objs3d = myGlobe.customThreeObjects();
-    if (objs3d && objs3d.length) objs3d[objs3d.length - 1].position.set(sx, sy, sz);
-    requestAnimationFrame(animateMoon);
+    const mp = toXYZ(0, moonAngle * 180 / Math.PI, MOON_R);
+    moonMesh.position.copy(mp);
+    earthMesh.rotation.y += 0.0008;
+    controls.update();
+    renderer.render(scene, camera);
   }
-  requestAnimationFrame(animateMoon);
+  animate();
 
-  myGlobe.controls().autoRotate = true;
-  myGlobe.controls().autoRotateSpeed = 0.35;
-  myGlobe.controls().enableZoom = true;
-  myGlobe.pointOfView({ altitude: 4.5 });
-
-  const phaCount = asteroidObjs.filter(a => a.pha).length;
+  const phaCount = neoData.filter(d => d.obj.is_potentially_hazardous_asteroid).length;
   document.getElementById('globe-status').textContent =
-    `${asteroidObjs.length} asteroids \u00b7 ${phaCount} potentially hazardous (red) \u00b7 Moon orbiting at 1 LD \u00b7 Click any object for details`;
+    `${neoData.length} asteroids \u00b7 ${phaCount} potentially hazardous (red) \u00b7 Moon orbiting at 1 LD \u00b7 Click any object for details`;
 }
 
 // ── STAR CANVAS ────────────────────────────────────────────────────────────
