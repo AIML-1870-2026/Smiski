@@ -100,14 +100,11 @@ Five tabs rendered as `<button class="tab">` elements inside `.tabs`. Active tab
 - **Stored in:** `neoData` — flat array of `{ obj, ca, date }` sorted by date
 - **Populates:** This Week, Close Approaches, Hazardous NEOs tabs; fallback data for 3D Globe
 
-### JPL Small Body Close Approach Data (CAD API)
-- **Endpoint:** `https://ssd-api.jpl.nasa.gov/cad.api`
-- **Primary data source for the 3D Globe tab**
-- **Two parallel requests made inside `initGlobe()`:**
-  1. All close approaches: `?date-min=&date-max=&dist-max=0.2&sort=dist&limit=50` — returns up to 50 objects within 0.2 AU passing Earth in the 7-day window
-  2. PHAs only: same params plus `&pha=true` — used to build a `Set` of PHA designations
-- **PHA detection:** asteroid names from request 2 are stored in `phaNames` (Set); each asteroid in request 1 is marked `pha: true` if its name matches
-- **Fallback:** if CAD API fails, falls back to `neoData` from NeoWs
+### 3D Globe Data Source
+- The 3D Globe tab uses `neoData` (already loaded by `loadNeoWs()`) as its data source
+- No additional API call is made inside `initGlobe()` — avoids CORS issues that blocked the JPL CAD API from GitHub Pages
+- PHA flags come directly from `obj.is_potentially_hazardous_asteroid` in the NeoWs response
+- All asteroids in the 7-day window are plotted (no limit)
 
 ### NASA APOD (Astronomy Picture of the Day)
 - **Endpoint:** `https://api.nasa.gov/planetary/apod`
@@ -150,7 +147,7 @@ Rendered by `initGlobe()` — called lazily when the tab is first activated.
 - Auto-rotates at speed 0.35; zoom enabled; initial altitude 3.5
 
 **Object rendering:**
-- Up to 50 asteroids from JPL CAD API (fallback: first 40 from `neoData`)
+- All asteroids from `neoData` (the full 7-day NeoWs feed, typically 50–100 objects)
 - Each asteroid assigned a random lat/lng and an altitude derived from `distToAlt(km)` — a log-scale function compressing 0.01–1000 LD into globe.gl altitude units 0.3–3.8
 - Positions set via `myGlobe.getCoords(lat, lng, alt)` in `customThreeObjectUpdate` — uses globe.gl's own coordinate transform
 - Non-hazardous asteroids: teal spheres (`0x00c8b4`), radius 3.5

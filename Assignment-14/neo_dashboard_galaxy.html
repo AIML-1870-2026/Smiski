@@ -583,59 +583,9 @@ async function initGlobe() {
   const T = window.THREE;
   if (!T) { document.getElementById('globe-status').textContent = 'THREE.js failed to load — try refreshing.'; return; }
 
-  document.getElementById('globe-status').textContent = 'Fetching close approach data from JPL CAD API\u2026';
+  document.getElementById('globe-status').textContent = 'Building 3D scene\u2026';
 
-  const today = new Date();
-  const end = new Date(today); end.setDate(end.getDate() + 7);
-  const dateMin = fmt(today), dateMax = fmt(end);
-
-  // ── Parallel fetch: all close approaches + PHAs only (8s timeout) ──
-  let cadEntries = [];
-  let phaNames = new Set();
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    const baseParams = `date-min=${dateMin}&date-max=${dateMax}&dist-max=0.2&sort=dist&limit=50`;
-    const [allRes, phaRes] = await Promise.all([
-      fetch(`https://ssd-api.jpl.nasa.gov/cad.api?${baseParams}`, { signal: controller.signal }),
-      fetch(`https://ssd-api.jpl.nasa.gov/cad.api?${baseParams}&pha=true`, { signal: controller.signal })
-    ]);
-    clearTimeout(timer);
-    if (phaRes.ok) {
-      const phaJson = await phaRes.json();
-      const iDesPha = (phaJson.fields || []).indexOf('des');
-      if (iDesPha >= 0) (phaJson.data || []).forEach(row =>
-        phaNames.add(String(row[iDesPha]).replace(/[()]/g, '').trim().toLowerCase()));
-    }
-    if (allRes.ok) {
-      const cadJson = await allRes.json();
-      const fi = cadJson.fields || [];
-      const iDes = fi.indexOf('des'), iDist = fi.indexOf('dist');
-      const iCd = fi.indexOf('cd'), iVrel = fi.indexOf('v_rel');
-      if (iDes >= 0 && iDist >= 0) {
-        cadEntries = (cadJson.data || []).map(row => {
-          const dist_au = parseFloat(row[iDist]);
-          const dist_km = dist_au * AU;
-          const dist_ld = dist_km / LD;
-          const name = String(row[iDes]).replace(/[()]/g, '').trim();
-          return {
-            name, dist_km, dist_ld,
-            date: String(row[iCd]),
-            v_kms: iVrel >= 0 ? parseFloat(row[iVrel]) : null,
-            pha: phaNames.has(name.toLowerCase()),
-          };
-        });
-      }
-    }
-  } catch(e) { /* timed out or network error — fall back to neoData */ }
-
-  // Update status before building the globe so user sees progress
-  document.getElementById('globe-status').textContent =
-    cadEntries.length > 0
-      ? `JPL CAD API: ${cadEntries.length} objects found \u2014 building 3D scene\u2026`
-      : `JPL CAD API unavailable \u2014 using NASA NeoWs data (${neoData.length} objects)\u2026`;
-
-  // Log-scale: compress 0.01–1000 LD into scene altitude (globe radius = 100 units)
+  // Log-scale: compress 0.01–1000 LD into globe.gl altitude units
   // globe.gl alt=0 → surface, alt=1 → 2× globe radius from center, etc.
   function distToAlt(km) {
     const ld = Math.max(0.01, km / LD);
@@ -648,43 +598,23 @@ async function initGlobe() {
   const MOON_ORBIT_SPEED = 0.003;
   let moonAngle = Math.random() * Math.PI * 2;
 
-  // Build asteroid objects with lat/lng/alt for globe.gl getCoords positioning
-  let asteroidObjs;
-  if (cadEntries.length > 0) {
-    asteroidObjs = cadEntries.map(entry => {
-      const lat = (Math.random() - 0.5) * 160;
-      const lng = Math.random() * 360 - 180;
-      return {
-        isAsteroid: true,
-        name: entry.name,
-        dist_km: entry.dist_km,
-        dist_ld: entry.dist_ld,
-        date: entry.date,
-        v_kmh: entry.v_kms ? entry.v_kms * 3600 : null,
-        pha: entry.pha,
-        lat, lng,
-        alt: distToAlt(entry.dist_km),
-      };
-    });
-  } else {
-    // Fallback: use neoData
-    asteroidObjs = neoData.slice(0, 40).map(({obj, ca}) => {
-      const km = parseFloat(ca.miss_distance.kilometers);
-      const lat = (Math.random() - 0.5) * 160;
-      const lng = Math.random() * 360 - 180;
-      return {
-        isAsteroid: true,
-        name: obj.name.replace(/[()]/g, '').trim(),
-        dist_km: km,
-        dist_ld: km / LD,
-        date: ca.close_approach_date,
-        v_kmh: parseFloat(ca.relative_velocity.kilometers_per_hour),
-        pha: obj.is_potentially_hazardous_asteroid,
-        lat, lng,
-        alt: distToAlt(km),
-      };
-    });
-  }
+  // Build asteroid objects from neoData (already loaded, has PHA flags, no CORS issues)
+  const asteroidObjs = neoData.map(({obj, ca}) => {
+    const km = parseFloat(ca.miss_distance.kilometers);
+    const lat = (Math.random() - 0.5) * 160;
+    const lng = Math.random() * 360 - 180;
+    return {
+      isAsteroid: true,
+      name: obj.name.replace(/[()]/g, '').trim(),
+      dist_km: km,
+      dist_ld: km / LD,
+      date: ca.close_approach_date,
+      v_kmh: parseFloat(ca.relative_velocity.kilometers_per_hour),
+      pha: obj.is_potentially_hazardous_asteroid,
+      lat, lng,
+      alt: distToAlt(km),
+    };
+  });
 
   // Moon at exactly 1 LD — starts at random longitude on equatorial orbit
   const moonDataObj = {
@@ -797,9 +727,8 @@ async function initGlobe() {
       requestAnimationFrame(animateMoon);
 
       const phaCount = asteroidObjs.filter(a => a.pha).length;
-      const src = cadEntries.length > 0 ? 'JPL CAD API' : 'NASA NeoWs (fallback)';
       document.getElementById('globe-status').textContent =
-        `${asteroidObjs.length} asteroids (${phaCount} PHA) plotted via ${src} \u00b7 Log-scaled miss distances \u00b7 Moon orbiting at 1 LD \u00b7 Click any object for details`;
+        `${asteroidObjs.length} asteroids \u00b7 ${phaCount} potentially hazardous (red) \u00b7 Log-scaled miss distances \u00b7 Moon orbiting at 1 LD \u00b7 Click any object for details`;
     });
 
   myGlobe.controls().autoRotate = true;
