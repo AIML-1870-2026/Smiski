@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEO Watch Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c12;--surface:#0d1420;--border:rgba(0,200,180,0.18);
+  --accent:#00c8b4;--warn:#f5a623;--danger:#e84040;
+  --text:#b0cce0;--muted:#506070;--head:#e0f4ff;
+  --mono:'Share Tech Mono',monospace;--main:'Rajdhani',sans-serif;
+}
+body{background:#04070d;min-height:100vh;padding:20px 12px;font-family:var(--main);display:flex;justify-content:center}
+#root{width:100%;max-width:1140px;background:var(--bg);border-radius:14px;overflow:hidden;border:1px solid var(--border)}
+
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:13px 22px;display:flex;align-items:center;gap:14px}
+.hdr-logo{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:2px}
+.hdr-title{font-size:19px;font-weight:600;color:var(--head);letter-spacing:1px}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--accent)}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 22px;overflow-x:auto}
+.tab{padding:11px 16px;font-family:var(--main);font-size:12px;font-weight:500;letter-spacing:1.5px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;text-transform:uppercase;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;transition:color .2s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+.panel{display:none;padding:20px}
+.panel.active{display:block}
+
+.sh{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+
+.mrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.mc{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 15px}
+.mc-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
+.mc-val{font-family:var(--mono);font-size:21px;color:var(--head);line-height:1.1}
+.mc-val.warn{color:var(--warn)}
+.mc-val.sm{font-size:13px;padding-top:3px}
+.mc-sub{font-size:11px;color:var(--muted);margin-top:3px}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 11px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 11px;border-bottom:1px solid rgba(0,200,180,0.06);color:var(--text);font-family:var(--mono);font-size:11px;white-space:nowrap}
+tr:hover td{background:rgba(0,200,180,0.04)}
+
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;font-family:var(--mono);letter-spacing:1px}
+.td{background:rgba(232,64,64,.15);color:#ff7070;border:1px solid rgba(232,64,64,.3)}
+.tok{background:rgba(0,200,180,.1);color:var(--accent);border:1px solid var(--border)}
+
+.loading,.err{text-align:center;padding:40px 20px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.err{color:var(--danger)}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.frow{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.frow label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px}
+.frow select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 9px;border-radius:5px}
+.frow select option{background:#0d1420}
+input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
+
+.rbar-wrap{display:flex;align-items:center;gap:8px}
+.rbar-bg{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;min-width:60px}
+.rbar-fill{height:100%;border-radius:3px}
+.rval{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:36px;text-align:right}
+
+.hero-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+@media(max-width:600px){.hero-grid{grid-template-columns:1fr 1fr}}
+.hero-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:16px}
+.hero-val{font-family:var(--mono);font-size:18px;color:var(--head);margin-bottom:3px}
+.hero-val.warn{color:var(--warn)}
+.hero-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.hero-sub{font-size:11px;color:var(--muted);line-height:1.5}
+
+.size-viz{display:flex;align-items:flex-end;gap:18px;padding:16px 0 8px;flex-wrap:wrap}
+.size-obj{display:flex;flex-direction:column;align-items:center;gap:5px}
+.size-circle{border-radius:50%;flex-shrink:0}
+.size-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;max-width:72px}
+.size-name{font-family:var(--mono);font-size:9px;color:var(--accent);text-align:center;max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+#globe-wrap{width:100%;height:560px;background:#000510;border-radius:8px;overflow:hidden;position:relative;border:1px solid var(--border)}
+.globe-legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;margin-bottom:14px}
+.gl-item{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.gl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+#asteroid-detail{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-top:4px;min-height:54px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.det-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(0,200,180,.06)}
+.det-row:last-child{border-bottom:none}
+.det-k{color:var(--muted);font-size:10px}
+.det-v{color:var(--head)}
+#globe-status{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:8px;min-height:16px}
+
+.apod-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media(max-width:680px){.apod-grid{grid-template-columns:1fr}}
+.apod-img{width:100%;border-radius:8px;border:1px solid var(--border);max-height:320px;object-fit:cover;display:block;margin-bottom:12px}
+.apod-title{font-size:16px;font-weight:600;color:var(--head);margin-bottom:5px}
+.apod-date{font-family:var(--mono);font-size:10px;color:var(--accent);margin-bottom:9px}
+.apod-exp{font-size:13px;line-height:1.7;color:var(--text)}
+.mini-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:12px 14px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start}
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="hdr">
+    <div class="hdr-logo">NASA / JPL</div>
+    <div class="hdr-title">NEO WATCH DASHBOARD</div>
+    <div class="hdr-right"><span class="pulse"></span> LIVE DATA</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('week')">&#9733; This Week</button>
+    <button class="tab" onclick="switchTab('globe')">&#9678; 3D Globe</button>
+    <button class="tab" onclick="switchTab('approaches')">Close Approaches</button>
+    <button class="tab" onclick="switchTab('hazardous')">Hazardous NEOs</button>
+    <button class="tab" onclick="switchTab('apod')">Space Media</button>
+  </div>
+
+  <div id="tab-week" class="panel active">
+    <div class="sh">This Week in Space Rocks</div>
+    <div id="week-content"><div class="loading"><span class="spin"></span>Crunching this week's asteroid data...</div></div>
+  </div>
+
+  <div id="tab-globe" class="panel">
+    <div class="sh">3D Earth — This Week's Asteroids at Relative Miss Distances</div>
+    <div id="globe-wrap"></div>
+    <div class="globe-legend">
+      <div class="gl-item"><div class="gl-dot" style="background:#00c8b4"></div>Non-hazardous asteroid</div>
+      <div class="gl-item"><div class="gl-dot" style="background:#e84040"></div>Potentially hazardous (PHA)</div>
+      <div class="gl-item"><div class="gl-dot" style="background:#c8c8ff"></div>Moon — 1 LD reference</div>
+    </div>
+    <div id="asteroid-detail">Click any asteroid or the Moon on the globe to see details.</div>
+    <div id="globe-status"></div>
+  </div>
+
+  <div id="tab-approaches" class="panel">
+    <div id="appr-metrics" class="mrow"></div>
+    <div class="sh">Close Approach Events — Next 7 Days</div>
+    <div class="frow">
+      <label>SORT BY</label>
+      <select id="sort-select" onchange="renderApproaches()">
+        <option value="date">Date</option>
+        <option value="dist">Miss Distance</option>
+        <option value="vel">Velocity</option>
+        <option value="diam">Diameter</option>
+      </select>
+      <label>HAZARDOUS ONLY</label>
+      <input type="checkbox" id="haz-filter" onchange="renderApproaches()">
+    </div>
+    <div id="appr-table"><div class="loading"><span class="spin"></span>Loading...</div></div>
+  </div>
+
+  <div id="tab-hazardous" class="panel">
+    <div class="sh">Potentially Hazardous Asteroids — Size & Velocity Context</div>
+    <div id="haz-content"><div class="loading"><span class="spin"></span>Loading hazardous asteroid data...</div></div>
+  </div>
+
+  <div id="tab-apod" class="panel">
+    <div class="sh">Astronomy Picture of the Day</div>
+    <div id="apod-content"><div class="loading"><span class="spin"></span>Fetching cosmic imagery...</div></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/globe.gl@2.31.0/dist/globe.gl.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const KEY = 'LOWvtLzuGPGdRRvsSv5BKCBq71qpDTmAaq0QHKaS';
+const LD = 384400; // km per lunar distance
+const AU = 149597870.7; // km per AU
+let neoData = []; // flat list of all NEO approach objects
+let globeReady = false;
+
+// ── UTILS ──────────────────────────────────────────────────────────────────
+const fmt = d => d.toISOString().slice(0,10);
+
+function fmtDist(km) {
+  const ld = km / LD;
+  if (ld < 0.1) return km.toFixed(0) + ' km';
+  if (ld < 10)  return ld.toFixed(2) + ' LD';
+  return (km / 1000000).toFixed(2) + 'M km';
+}
+
+function fmtDistVerbose(km) {
+  const ld = (km / LD).toFixed(2);
+  const trips = Math.round(km / 40075);
+  return `${ld} lunar distances · ~${trips.toLocaleString()} trips around Earth`;
+}
+
+function estDiamM(obj) {
+  const min = obj.estimated_diameter.meters.estimated_diameter_min;
+  const max = obj.estimated_diameter.meters.estimated_diameter_max;
+  return Math.round((min + max) / 2);
+}
+
+function hazTag(is) {
+  return is ? '<span class="tag td">HAZARDOUS</span>' : '<span class="tag tok">SAFE</span>';
+}
+
+// ── TAB SWITCHING ──────────────────────────────────────────────────────────
+function switchTab(id) {
+  const ids = ['week','globe','approaches','hazardous','apod'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ids[i] === id));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  if (id === 'globe' && !globeReady && neoData.length) initGlobe();
+}
+
+// ── LOAD NASA NeoWs ────────────────────────────────────────────────────────
+async function loadNeoWs() {
+  try {
+    const today = new Date();
+    const end = new Date(today); end.setDate(end.getDate() + 7);
+    const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${fmt(today)}&end_date=${fmt(end)}&api_key=${KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    neoData = [];
+    for (const day in data.near_earth_objects) {
+      data.near_earth_objects[day].forEach(obj => {
+        obj.close_approach_data.forEach(ca => {
+          neoData.push({ obj, ca, date: ca.close_approach_date });
+        });
+      });
+    }
+    neoData.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+    renderWeek();
+    renderApproaches();
+    renderHazardous();
+    if (document.getElementById('tab-globe').classList.contains('active')) initGlobe();
+  } catch(e) {
+    ['week-content','appr-table','haz-content'].forEach(id => {
+      document.getElementById(id).innerHTML = `<div class="err">Failed to load NeoWs data: ${e.message}</div>`;
+    });
+  }
+}
+
+// ── THIS WEEK TAB ──────────────────────────────────────────────────────────
+function renderWeek() {
+  if (!neoData.length) return;
+  const hazList = neoData.filter(d => d.obj.is_potentially_hazardous_asteroid);
+  const closest = neoData.reduce((a,b) =>
+    parseFloat(a.ca.miss_distance.kilometers) < parseFloat(b.ca.miss_distance.kilometers) ? a : b);
+  const fastest = neoData.reduce((a,b) =>
+    parseFloat(a.ca.relative_velocity.kilometers_per_hour) > parseFloat(b.ca.relative_velocity.kilometers_per_hour) ? a : b);
+  const largest = neoData.reduce((a,b) => estDiamM(a.obj) > estDiamM(b.obj) ? a : b);
+
+  const closestKm = parseFloat(closest.ca.miss_distance.kilometers);
+  const fastestKmh = parseFloat(fastest.ca.relative_velocity.kilometers_per_hour);
+
+  // Velocity context
+  const ISS = 27600, BULLET = 3960, SOUND = 1235, ESCAPE = 40320;
+
+  // Size comparison viz
+  const asteroidM = estDiamM(closest.obj);
+  const refs = [
+    { name: 'Car', m: 4.5, color: '#506070' },
+    { name: 'Bus', m: 12, color: '#506070' },
+    { name: 'Boeing 747', m: 64, color: '#506070' },
+    { name: 'Eiffel Tower', m: 330, color: '#506070' },
+    { name: 'Empire State', m: 443, color: '#506070' },
+  ];
+  refs.push({ name: closest.obj.name.replace(/[()]/g,'').trim(), m: asteroidM, color: '#00c8b4', highlight: true });
+  refs.sort((a,b) => a.m - b.m);
+  const maxM = Math.max(...refs.map(r => r.m));
+  const sizeViz = refs.map(r => {
+    const px = Math.max(8, Math.round((r.m / maxM) * 86));
+    return `<div class="size-obj">
+      <div class="size-circle" style="width:${px}px;height:${px}px;background:${r.color};${r.highlight ? 'box-shadow:0 0 14px #00c8b4;opacity:1;' : 'opacity:0.5;'}"></div>
+      <div class="size-name" style="${r.highlight ? 'color:#00c8b4;' : ''}">${r.name}</div>
+      <div class="size-lbl">${r.m >= 1000 ? (r.m/1000).toFixed(1)+'km' : r.m+'m'}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('week-content').innerHTML = `
+    <div class="hero-grid">
+      <div class="hero-card">
+        <div class="hero-lbl">Total Objects</div>
+        <div class="hero-val">${neoData.length}</div>
+        <div class="hero-sub">passing Earth this week</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-lbl">Potentially Hazardous</div>
+        <div class="hero-val ${hazList.length > 0 ? 'warn' : ''}">${hazList.length}</div>
+        <div class="hero-sub">PHAs in this 7-day window</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-lbl">Closest Approach</div>
+        <div class="hero-val" style="font-size:15px">${fmtDist(closestKm)}</div>
+        <div class="hero-sub">${closest.obj.name.replace(/[()]/g,'').trim().slice(0,26)}<br>${fmtDistVerbose(closestKm)}</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-lbl">Fastest Flyby</div>
+        <div class="hero-val" style="font-size:14px">${Math.round(fastestKmh).toLocaleString()} km/h</div>
+        <div class="hero-sub">${fastest.obj.name.replace(/[()]/g,'').trim().slice(0,26)}<br>${Math.round(fastestKmh/ISS)}× ISS speed</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-lbl">Largest Object</div>
+        <div class="hero-val" style="font-size:15px">${estDiamM(largest.obj).toLocaleString()} m</div>
+        <div class="hero-sub">${largest.obj.name.replace(/[()]/g,'').trim().slice(0,26)}<br>est. diameter</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-lbl">Data Window</div>
+        <div class="hero-val sm">${fmt(new Date())}</div>
+        <div class="hero-sub">via NASA NeoWs API<br>7-day forecast</div>
+      </div>
+    </div>
+
+    <div class="sh">Velocity Context — Fastest Asteroid vs Familiar Speeds</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:22px">
+      ${[
+        { lbl: 'Speed of Sound', ref: SOUND },
+        { lbl: 'Rifle Bullet', ref: BULLET },
+        { lbl: 'ISS Orbit Speed', ref: ISS },
+        { lbl: 'Earth Escape Vel.', ref: ESCAPE },
+      ].map(c => `<div class="mc">
+        <div class="mc-lbl">${c.lbl}</div>
+        <div class="mc-val warn">${Math.round(fastestKmh / c.ref)}×</div>
+        <div class="mc-sub">faster than ${c.lbl.toLowerCase()}</div>
+      </div>`).join('')}
+    </div>
+
+    <div class="sh">Size Comparison — Closest Asteroid vs Familiar Objects</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px">
+      Estimated diameter of <span style="color:var(--accent)">${closest.obj.name.replace(/[()]/g,'').trim()}</span>: ~${asteroidM >= 1000 ? (asteroidM/1000).toFixed(2)+'km' : asteroidM+'m'}
+    </div>
+    <div class="size-viz">${sizeViz}</div>`;
+}
+
+// ── APPROACHES TAB ─────────────────────────────────────────────────────────
+function renderApproaches() {
+  if (!neoData.length) return;
+  const sort = document.getElementById('sort-select').value;
+  const hazOnly = document.getElementById('haz-filter').checked;
+  let list = [...neoData];
+  if (hazOnly) list = list.filter(d => d.obj.is_potentially_hazardous_asteroid);
+
+  if (sort === 'dist') list.sort((a,b) => parseFloat(a.ca.miss_distance.kilometers) - parseFloat(b.ca.miss_distance.kilometers));
+  else if (sort === 'vel') list.sort((a,b) => parseFloat(b.ca.relative_velocity.kilometers_per_hour) - parseFloat(a.ca.relative_velocity.kilometers_per_hour));
+  else if (sort === 'diam') list.sort((a,b) => estDiamM(b.obj) - estDiamM(a.obj));
+  else list.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  const hazCount = neoData.filter(d => d.obj.is_potentially_hazardous_asteroid).length;
+  const minKm = parseFloat(neoData.reduce((a,b) =>
+    parseFloat(a.ca.miss_distance.kilometers) < parseFloat(b.ca.miss_distance.kilometers) ? a : b
+  ).ca.miss_distance.kilometers);
+
+  document.getElementById('appr-metrics').innerHTML = `
+    <div class="mc"><div class="mc-lbl">Total Objects</div><div class="mc-val">${neoData.length}</div><div class="mc-sub">Next 7 days</div></div>
+    <div class="mc"><div class="mc-lbl">Hazardous</div><div class="mc-val ${hazCount > 0 ? 'warn' : ''}">${hazCount}</div><div class="mc-sub">PHAs this week</div></div>
+    <div class="mc"><div class="mc-lbl">Closest</div><div class="mc-val sm">${fmtDist(minKm)}</div><div class="mc-sub">min miss distance</div></div>
+    <div class="mc"><div class="mc-lbl">Source</div><div class="mc-val sm">NeoWs</div><div class="mc-sub">api.nasa.gov/neo</div></div>`;
+
+  const rows = list.slice(0,60).map(({obj, ca}) => {
+    const km = parseFloat(ca.miss_distance.kilometers);
+    const ld = (km / LD).toFixed(2);
+    const vel = parseFloat(ca.relative_velocity.kilometers_per_hour).toLocaleString(undefined, {maximumFractionDigits:0});
+    const diam = estDiamM(obj);
+    return `<tr>
+      <td>${obj.name.replace(/[()]/g,'').trim()}</td>
+      <td>${ca.close_approach_date}</td>
+      <td>${fmtDist(km)}</td>
+      <td>${ld} LD</td>
+      <td>${vel} km/h</td>
+      <td>${diam.toLocaleString()} m</td>
+      <td>${hazTag(obj.is_potentially_hazardous_asteroid)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('appr-table').innerHTML = `
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Object</th><th>Date</th><th>Miss Dist</th><th>Lunar Dist</th><th>Velocity</th><th>Est. Diam</th><th>Status</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">No results</td></tr>'}</tbody>
+    </table></div>`;
+}
+
+// ── HAZARDOUS TAB ──────────────────────────────────────────────────────────
+function renderHazardous() {
+  if (!neoData.length) return;
+  const hazList = neoData.filter(d => d.obj.is_potentially_hazardous_asteroid);
+
+  if (!hazList.length) {
+    document.getElementById('haz-content').innerHTML = `<div style="font-family:var(--mono);font-size:12px;color:var(--accent);padding:20px">No potentially hazardous asteroids detected this week.</div>`;
+    return;
+  }
+
+  const cards = hazList.map(({obj, ca}) => {
+    const km = parseFloat(ca.miss_distance.kilometers);
+    const ld = (km / LD).toFixed(2);
+    const vel = parseFloat(ca.relative_velocity.kilometers_per_hour);
+    const diam = estDiamM(obj);
+    const maxDiam = 2000;
+    const barW = Math.min(100, Math.round((diam / maxDiam) * 100));
+    const velBar = Math.min(100, Math.round((vel / 200000) * 100));
+    const sizeCtx = diam < 50 ? 'House-sized' : diam < 200 ? 'City-block-sized' : diam < 500 ? 'Skyscraper-sized' : diam < 2000 ? 'Mountain-sized' : 'City-killer class';
+
+    return `<div class="mc" style="border-color:rgba(232,64,64,0.35);margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-family:var(--mono);font-size:12px;color:#ff9090;margin-bottom:3px">${obj.name.replace(/[()]/g,'').trim()}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">${ca.close_approach_date}</div>
+        </div>
+        <span class="tag td">PHA</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
+        <div>
+          <div class="mc-lbl">Miss Distance</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--head)">${fmtDist(km)}</div>
+          <div class="mc-sub">${ld} lunar distances</div>
+        </div>
+        <div>
+          <div class="mc-lbl">Velocity</div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--warn)">${Math.round(vel).toLocaleString()} km/h</div>
+          <div class="mc-sub">${Math.round(vel/27600)}× ISS speed</div>
+        </div>
+      </div>
+      <div style="margin-bottom:6px">
+        <div class="mc-lbl" style="margin-bottom:4px">Est. Diameter — ${diam.toLocaleString()}m &nbsp;·&nbsp; ${sizeCtx}</div>
+        <div class="rbar-bg" style="height:7px">
+          <div class="rbar-fill" style="width:${barW}%;background:#e84040"></div>
+        </div>
+      </div>
+      <div>
+        <div class="mc-lbl" style="margin-bottom:4px">Relative Velocity</div>
+        <div class="rbar-bg" style="height:7px">
+          <div class="rbar-fill" style="width:${velBar}%;background:var(--warn)"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('haz-content').innerHTML = `
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:16px">
+      ${hazList.length} potentially hazardous asteroid${hazList.length !== 1 ? 's' : ''} making close approaches this week.
+      PHAs are defined as NEOs with H &lt; 22 and miss distance &lt; 0.05 AU.
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px">${cards}</div>`;
+}
+
+// ── APOD TAB ───────────────────────────────────────────────────────────────
+async function loadAPOD() {
+  try {
+    const res = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${KEY}&count=4`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const items = await res.json();
+    const today = items[items.length - 1];
+    const extras = items.slice(0,3).map(item => `
+      <div class="mini-card">
+        ${item.media_type === 'image'
+          ? `<img src="${item.url}" style="width:82px;height:62px;object-fit:cover;border-radius:5px;border:1px solid var(--border);flex-shrink:0" onerror="this.style.display='none'">`
+          : `<div style="width:82px;height:62px;background:var(--surface);border-radius:5px;border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted)">VIDEO</div>`}
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--head);margin-bottom:3px">${item.title}</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--accent);margin-bottom:4px">${item.date}</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5">${item.explanation.slice(0,90)}...</div>
+        </div>
+      </div>`).join('');
+
+    document.getElementById('apod-content').innerHTML = `
+      <div class="apod-grid">
+        <div>
+          ${today.media_type === 'image'
+            ? `<img src="${today.hdurl || today.url}" class="apod-img" onerror="this.src='${today.url}'">`
+            : `<div style="height:220px;background:var(--surface);border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:12px"><a href="${today.url}" target="_blank" style="color:var(--accent);font-family:var(--mono);font-size:12px">Watch Video</a></div>`}
+          <div class="apod-title">${today.title}</div>
+          <div class="apod-date">${today.date} · ${today.copyright ? '© ' + today.copyright : 'Public Domain'}</div>
+          <div class="apod-exp">${today.explanation}</div>
+        </div>
+        <div>
+          <div class="sh" style="margin-top:0">Recent Gallery</div>
+          ${extras}
+        </div>
+      </div>`;
+  } catch(e) {
+    document.getElementById('apod-content').innerHTML = `<div class="err">Failed to load APOD: ${e.message}</div>`;
+  }
+}
+
+// ── 3D GLOBE ───────────────────────────────────────────────────────────────
+function initGlobe() {
+  if (globeReady) return;
+  globeReady = true;
+
+  const wrap = document.getElementById('globe-wrap');
+  const T = window.THREE;
+  if (!T) { document.getElementById('globe-status').textContent = 'THREE.js failed to load — try refreshing.'; return; }
+
+  // Log-scale: compress 0.01–1000 LD into 130–480 scene units (globe radius ≈ 100)
+  function distToR(km) {
+    const ld = Math.max(0.01, km / LD);
+    const t = Math.min(1, Math.log10(ld / 0.01) / Math.log10(10000));
+    return 130 + t * 350;
+  }
+
+  const MOON_R = distToR(LD); // scene radius for 1 LD
+  const MOON_ORBIT_SPEED = 0.003; // radians per frame
+  let moonAngle = Math.random() * Math.PI * 2;
+
+  // Asteroid data objects with fixed random positions
+  const asteroidObjs = neoData.slice(0, 40).map(({obj, ca}) => {
+    const km = parseFloat(ca.miss_distance.kilometers);
+    const r = distToR(km);
+    const phi = Math.acos(2 * Math.random() - 1);
+    const theta = 2 * Math.PI * Math.random();
+    return {
+      isAsteroid: true, obj, ca, km,
+      pha: obj.is_potentially_hazardous_asteroid,
+      x: r * Math.sin(phi) * Math.cos(theta),
+      y: r * Math.sin(phi) * Math.sin(theta),
+      z: r * Math.cos(phi),
+    };
+  });
+
+  // Moon starts at current angle on the orbital plane (y≈0 for equatorial)
+  const moonDataObj = {
+    isMoon: true, km: LD,
+    x: MOON_R * Math.cos(moonAngle),
+    y: MOON_R * 0.1,
+    z: MOON_R * Math.sin(moonAngle),
+  };
+
+  const allObjs = [...asteroidObjs, moonDataObj];
+
+  // ── Click handler ──
+  function showDetail(obj) {
+    if (obj.isMoon) {
+      document.getElementById('asteroid-detail').innerHTML = `
+        <div class="det-row"><span class="det-k">OBJECT</span><span class="det-v" style="color:#c8c8ff">&#9790; Moon — Reference Body</span></div>
+        <div class="det-row"><span class="det-k">DISTANCE FROM EARTH</span><span class="det-v">1.000 LD = 384,400 km</span></div>
+        <div class="det-row"><span class="det-k">ORBITAL PERIOD</span><span class="det-v">27.3 days</span></div>
+        <div class="det-row"><span class="det-k">ORBITAL SPEED</span><span class="det-v">3,683 km/h</span></div>
+        <div class="det-row"><span class="det-k">NOTE</span><span class="det-v">Shown at 1 LD — the reference unit used for asteroid miss distances</span></div>`;
+      return;
+    }
+    const {obj: neo, ca, km, pha} = obj;
+    const ld = (km / LD).toFixed(3);
+    const ldNum = parseFloat(ld);
+    const ldContext = ldNum < 1 ? `${ld} LD — closer than the Moon!` : ldNum < 5 ? `${ld} LD — within 5 lunar distances` : `${ld} LD — ${ldNum.toFixed(1)}× farther than the Moon`;
+    const vel = parseFloat(ca.relative_velocity.kilometers_per_hour).toLocaleString(undefined, {maximumFractionDigits:0});
+    const diam = estDiamM(neo);
+    document.getElementById('asteroid-detail').innerHTML = `
+      <div class="det-row"><span class="det-k">OBJECT</span><span class="det-v" style="color:${pha?'#ff9090':'var(--accent)'}">${neo.name.replace(/[()]/g,'').trim()}</span></div>
+      <div class="det-row"><span class="det-k">CLOSE APPROACH</span><span class="det-v">${ca.close_approach_date}</span></div>
+      <div class="det-row"><span class="det-k">MISS DISTANCE</span><span class="det-v">${ldContext}</span></div>
+      <div class="det-row"><span class="det-k">IN KM</span><span class="det-v">${parseFloat(km).toLocaleString(undefined,{maximumFractionDigits:0})} km</span></div>
+      <div class="det-row"><span class="det-k">INTUITIVE</span><span class="det-v">${fmtDistVerbose(km)}</span></div>
+      <div class="det-row"><span class="det-k">VELOCITY</span><span class="det-v">${vel} km/h &nbsp;(${Math.round(parseFloat(ca.relative_velocity.kilometers_per_hour)/27600)}× ISS speed)</span></div>
+      <div class="det-row"><span class="det-k">EST. DIAMETER</span><span class="det-v">${diam.toLocaleString()} m</span></div>
+      <div class="det-row"><span class="det-k">HAZARDOUS</span><span class="det-v" style="color:${pha?'#ff7070':'var(--accent)'}">${pha ? 'YES — Potentially Hazardous Asteroid' : 'No'}</span></div>`;
+  }
+
+  // ── Globe setup ──
+  const myGlobe = Globe({ animateIn: true })(wrap);
+  myGlobe
+    .width(wrap.clientWidth || 1000)
+    .height(560)
+    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+    .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
+    .customThreeObjectsData(allObjs)
+    .customThreeObject(obj => {
+      if (obj.isMoon) {
+        // Moon: textured grey sphere
+        const geo = new T.SphereGeometry(10, 24, 24);
+        const mat = new T.MeshLambertMaterial({ color: 0xd8d8ff, emissive: 0x4444aa, emissiveIntensity: 0.35 });
+        const mesh = new T.Mesh(geo, mat);
+        mesh.userData._isMoonMesh = true;
+        return mesh;
+      }
+      const color = obj.pha ? 0xe84040 : 0x00c8b4;
+      const size = obj.pha ? 5.5 : 3.5;
+      const mat = new T.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.7 });
+      return new T.Mesh(new T.SphereGeometry(size, 14, 14), mat);
+    })
+    .customThreeObjectUpdate((mesh, obj) => {
+      mesh.position.set(obj.x, obj.y, obj.z);
+    })
+    .onCustomObjectClick(showDetail)
+    .onGlobeReady(() => {
+      const scene = myGlobe.scene();
+
+      // Lighting
+      scene.add(new T.AmbientLight(0x888888));
+      const dl = new T.DirectionalLight(0xffffff, 1.1);
+      dl.position.set(400, 300, 200);
+      scene.add(dl);
+
+      // ── Moon orbit ring (tilted ~5° like the real Moon) ──
+      const orbitGeo = new T.RingGeometry(MOON_R - 1, MOON_R + 1, 180);
+      const orbitMat = new T.MeshBasicMaterial({ color: 0x8888cc, side: T.DoubleSide, transparent: true, opacity: 0.35 });
+      const orbitRing = new T.Mesh(orbitGeo, orbitMat);
+      orbitRing.rotation.x = Math.PI / 2;
+      orbitRing.rotation.z = 0.09; // ~5° tilt
+      scene.add(orbitRing);
+
+      // Inner boundary ring (roughly LEO reference)
+      const innerGeo = new T.RingGeometry(128, 132, 128);
+      const innerMat = new T.MeshBasicMaterial({ color: 0x00c8b4, side: T.DoubleSide, transparent: true, opacity: 0.12 });
+      const innerRing = new T.Mesh(innerGeo, innerMat);
+      innerRing.rotation.x = Math.PI / 2;
+      scene.add(innerRing);
+
+      // ── Animated Moon: update position each frame ──
+      const moonMesh = scene.children.find(c => c.userData && c.userData._isMoonMesh);
+      const renderer = myGlobe.renderer();
+      const origRender = renderer.render.bind(renderer);
+
+      // Grab the moon's THREE object directly from customThreeObjects
+      // We animate by mutating moonDataObj and calling customThreeObjectUpdate
+      let lastTime = 0;
+      function animateMoon(time) {
+        const dt = time - lastTime;
+        lastTime = time;
+        // Advance moon angle
+        moonAngle += MOON_ORBIT_SPEED;
+        moonDataObj.x = MOON_R * Math.cos(moonAngle);
+        moonDataObj.y = MOON_R * 0.09 * Math.sin(moonAngle); // slight inclination
+        moonDataObj.z = MOON_R * Math.sin(moonAngle);
+        // globe.gl re-calls customThreeObjectUpdate on data change but we need to push it
+        // Directly update the mesh position instead
+        const objs3d = myGlobe.customThreeObjects();
+        const moonMesh3d = objs3d ? objs3d[objs3d.length - 1] : null;
+        if (moonMesh3d) moonMesh3d.position.set(moonDataObj.x, moonDataObj.y, moonDataObj.z);
+        requestAnimationFrame(animateMoon);
+      }
+      requestAnimationFrame(animateMoon);
+
+      document.getElementById('globe-status').textContent =
+        `${asteroidObjs.length} asteroids plotted · Log-scaled distances · Moon orbiting at 1 LD · Click any object for details`;
+    });
+
+  myGlobe.controls().autoRotate = true;
+  myGlobe.controls().autoRotateSpeed = 0.35;
+  myGlobe.controls().enableZoom = true;
+  myGlobe.pointOfView({ altitude: 3.5 });
+}
+
+// ── BOOT ───────────────────────────────────────────────────────────────────
+loadNeoWs();
+loadAPOD();
+</script>
+</body>
+</html>
