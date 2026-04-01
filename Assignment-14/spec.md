@@ -138,40 +138,38 @@ Rendered by `initGlobe()` — called lazily when the tab is first activated.
 
 **Libraries:**
 - `three.js` r128 (via cdnjs CDN)
-- `three/examples/js/controls/OrbitControls.js` r128 (via jsdelivr CDN)
-- globe.gl removed — pure THREE.js scene gives full, reliable control
+- `globe.gl` (via unpkg CDN) — wraps Three.js, provides textured Earth + built-in OrbitControls + render loop
 
 **Scene setup:**
-- Pure THREE.js `WebGLRenderer` (alpha: true — CSS star canvas shows through)
-- Earth: `SphereGeometry(100)` with blue marble texture via `TextureLoader`; solid blue while texture loads; slow Y-axis rotation
-- Background: transparent canvas overlaid on page CSS star field
-- Container: `#globe-wrap`, `560px` tall; renderer canvas appended directly
-- `OrbitControls` with damping, auto-rotate speed 0.4, zoom enabled; camera starts at z=550
+- `globe.gl` `Globe()(wrap)` — mounts its own `WebGLRenderer` into `#globe-wrap` (`560px` tall)
+- Earth: blue marble texture loaded from `unpkg.com/three-globe/example/img/earth-blue-marble.jpg`; background color `#000510`
+- Container width set to `wrap.clientWidth || 900`
+- Built-in `OrbitControls` (from `globe.controls()`) with `autoRotate = true`, `autoRotateSpeed = 0.4`; zoom and drag enabled
+- Raw Three.js objects (Moon, rings, star field) added via `globe.scene().add()` — rendered by globe.gl's internal RAF loop
 
-**Object rendering:**
-- Uses globe.gl's `customThreeObjectsData` / `customThreeObject` / `customThreeObjectUpdate` pipeline
-- All asteroids from `neoData` (the full 7-day NeoWs feed, typically 50–100 objects)
-- Each asteroid assigned a random lat/lng; altitude derived from `distToAlt(km)` (log-scale, 0.3–3.8 globe-radii above surface)
-- Positions baked into each data object as `sx/sy/sz` using `toXYZ(lat, lng, alt)` — same formula as globe.gl's `getCoords` (globe radius = 100, Y-up): `phi=(90-lat)*PI/180`, `r=100*(1+alt)`, `sx=r*sin(phi)*cos(theta)`, `sy=r*cos(phi)`, `sz=r*sin(phi)*sin(theta)`
-- `customThreeObjectUpdate` simply calls `group.position.set(obj.sx, obj.sy, obj.sz)` — no runtime `getCoords` call needed
-- Non-hazardous asteroids: teal `IcosahedronGeometry` (radius 5, detail 1, `flatShading: true`) — rocky, faceted look
-- Potentially hazardous asteroids: red `IcosahedronGeometry`, radius 8
-- Each object has a floating `makeNameSprite` label
-- Moon: grey `SphereGeometry` (radius 12) with emissive glow; click handled via `onCustomObjectClick`
-- `animateIn: false` and a `requestAnimationFrame` delay before `Globe()` ensure the container is laid out before WebGL initializes
-- All meshes added via `scene.add()` in a single synchronous `initGlobe()` call — no callbacks, no texture-load gating; asteroids and moon appear on the first rendered frame
-- Click detection via `THREE.Raycaster` on `wrap` click events
+**Asteroid rendering:**
+- Uses globe.gl's `customLayerData` / `customThreeObject` / `customThreeObjectUpdate` pipeline
+- All asteroids from `neoData` (full 7-day NeoWs feed, typically 50–100 objects)
+- Each asteroid assigned random lat/lng; altitude derived from `distToAlt(km)` (log-scale, 0.3–3.3 globe-radii above surface)
+- `customThreeObjectUpdate` calls `globe.getCoords(lat, lng, alt)` each frame to position meshes
+- Non-hazardous: teal `IcosahedronGeometry` (radius 5, detail 1, `flatShading: true`) — rocky faceted look
+- Potentially hazardous: red `IcosahedronGeometry`, radius 8, higher emissive intensity
+- Click detection for asteroids via `onCustomLayerClick` callback — calls `showDetail(d)`
 
-**Moon orbit:**
-- Orbits at `MOON_ORBIT_SPEED = 0.003` rad/frame via `requestAnimationFrame` inside `onGlobeReady`
-- Equatorial orbit (lat = 0), longitude increments each frame; position computed via `myGlobe.getCoords(0, lng, MOON_ALT)`
-- Moon mesh position updated directly each frame
-- A visual ring at the Moon's orbital radius, `(MOON_ALT + 1) * 100` scene units (semi-transparent blue-purple, `RingGeometry`)
-- A second inner reference ring at scene unit 130 (roughly LEO reference, teal, very faint)
+**Moon:**
+- `SphereGeometry(14, 32, 32)`, grey `MeshPhongMaterial` with blue-tinted emissive glow; added via `globe.scene().add()`
+- Equatorial orbit (lat = 0), `moonAngle` increments `0.003` rad/frame inside a `requestAnimationFrame` loop
+- Position computed each frame via `globe.getCoords(0, angleDeg, MOON_ALT)`
+- Orbital ring: `RingGeometry` at radius `100 * (1 + MOON_ALT)` scene units, semi-transparent blue-purple, `rotation.x = PI/2`
+- Click detection via `THREE.Raycaster` on `wrap` click event — calls `showDetail({ isMoon: true })`
 
-**Lighting:**
-- `AmbientLight` at `0x888888`
-- `DirectionalLight` at `0xffffff`, intensity 1.1, position (400, 300, 200)
+**Background star field:**
+- 2000-point `THREE.Points` cloud added to `globe.scene()`
+- Points uniformly distributed on a sphere of radius 1800–2400 scene units (well beyond all asteroids and Moon)
+- `PointsMaterial`: white (`0xffffff`), size 1.4, `sizeAttenuation: true`, opacity 0.85
+
+**Lighting (globe.gl defaults):**
+- `AmbientLight` and `DirectionalLight` provided by globe.gl internally
 
 **Legend:** Three items below the globe — non-hazardous, PHA, Moon.
 
@@ -179,7 +177,7 @@ Rendered by `initGlobe()` — called lazily when the tab is first activated.
 - Asteroid: Object name, Close Approach date, Miss Distance (LD context), Miss Distance (km), Intuitive distance (lunar trips around Earth), Velocity (km/h + ISS multiplier), Estimated Diameter, Hazardous flag
 - Moon: fixed reference data (orbital period, speed, LD definition)
 
-**Status line (`#globe-status`):** Shows asteroid count, scaling note, interaction hint after globe ready.
+**Status line (`#globe-status`):** Shows asteroid count, hazardous count, Moon note, and interaction hint after globe ready.
 
 ---
 
