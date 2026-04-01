@@ -156,7 +156,8 @@ Rendered by `initGlobe()` — called lazily when the tab is first activated.
 - Potentially hazardous asteroids: red `IcosahedronGeometry`, radius 8
 - Each object has a floating `makeNameSprite` label
 - Moon: grey `SphereGeometry` (radius 12) with emissive glow; click handled via `onCustomObjectClick`
-- `animateIn: false` and a `requestAnimationFrame` delay before `Globe()` call ensure the container is laid out before WebGL initializes
+- `animateIn: false` and a `requestAnimationFrame` delay before `Globe()` ensure the container is laid out before WebGL initializes
+- `myGlobe.scene()` and `myGlobe.camera()` are accessed **synchronously** right after `Globe()` — no `onGlobeReady` callback used; objects appear immediately without waiting for Earth texture download
 
 **Moon orbit:**
 - Orbits at `MOON_ORBIT_SPEED = 0.003` rad/frame via `requestAnimationFrame` inside `onGlobeReady`
