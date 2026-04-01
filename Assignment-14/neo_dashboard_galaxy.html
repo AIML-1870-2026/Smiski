@@ -589,15 +589,18 @@ async function initGlobe() {
   const end = new Date(today); end.setDate(end.getDate() + 7);
   const dateMin = fmt(today), dateMax = fmt(end);
 
-  // ── Parallel fetch: all close approaches + PHAs only (to detect PHA flag) ──
+  // ── Parallel fetch: all close approaches + PHAs only (8s timeout) ──
   let cadEntries = [];
   let phaNames = new Set();
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
     const baseParams = `date-min=${dateMin}&date-max=${dateMax}&dist-max=0.2&sort=dist&limit=50`;
     const [allRes, phaRes] = await Promise.all([
-      fetch(`https://ssd-api.jpl.nasa.gov/cad.api?${baseParams}`),
-      fetch(`https://ssd-api.jpl.nasa.gov/cad.api?${baseParams}&pha=true`)
+      fetch(`https://ssd-api.jpl.nasa.gov/cad.api?${baseParams}`, { signal: controller.signal }),
+      fetch(`https://ssd-api.jpl.nasa.gov/cad.api?${baseParams}&pha=true`, { signal: controller.signal })
     ]);
+    clearTimeout(timer);
     if (phaRes.ok) {
       const phaJson = await phaRes.json();
       const iDesPha = (phaJson.fields || []).indexOf('des');
@@ -624,7 +627,13 @@ async function initGlobe() {
         });
       }
     }
-  } catch(e) { /* fall back to neoData */ }
+  } catch(e) { /* timed out or network error — fall back to neoData */ }
+
+  // Update status before building the globe so user sees progress
+  document.getElementById('globe-status').textContent =
+    cadEntries.length > 0
+      ? `JPL CAD API: ${cadEntries.length} objects found \u2014 building 3D scene\u2026`
+      : `JPL CAD API unavailable \u2014 using NASA NeoWs data (${neoData.length} objects)\u2026`;
 
   // Log-scale: compress 0.01–1000 LD into scene altitude (globe radius = 100 units)
   // globe.gl alt=0 → surface, alt=1 → 2× globe radius from center, etc.
