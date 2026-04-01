@@ -279,7 +279,7 @@ function switchTab(id) {
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
-  if (id === 'globe' && !globeReady && neoData.length) initGlobe();
+  if (id === 'globe' && !globeReady) initGlobe();
 }
 
 // ── LOAD NASA NeoWs ────────────────────────────────────────────────────────
@@ -581,8 +581,9 @@ function initGlobe() {
 
   const wrap = document.getElementById('globe-wrap');
   const T = window.THREE;
-  if (!T || !T.OrbitControls) {
+  if (!T) {
     document.getElementById('globe-status').textContent = 'THREE.js failed to load \u2014 try refreshing.';
+    globeReady = false;
     return;
   }
 
@@ -646,13 +647,32 @@ function initGlobe() {
   const camera = new T.PerspectiveCamera(60, W / H, 1, 5000);
   camera.position.set(0, 80, 550);
 
-  const controls = new T.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
-  controls.autoRotate = true;
-  controls.autoRotateSpeed = 0.4;
-  controls.minDistance = 130;
-  controls.maxDistance = 1200;
+  let controls = null;
+  if (T.OrbitControls) {
+    controls = new T.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.4;
+    controls.minDistance = 130;
+    controls.maxDistance = 1200;
+  } else {
+    // Fallback: simple mouse-drag rotation when OrbitControls CDN fails
+    let drag = false, lastX = 0, lastY = 0;
+    renderer.domElement.addEventListener('mousedown', e => { drag = true; lastX = e.clientX; lastY = e.clientY; });
+    renderer.domElement.addEventListener('mouseup', () => { drag = false; });
+    renderer.domElement.addEventListener('mousemove', e => {
+      if (!drag) return;
+      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      camera.position.applyQuaternion(
+        new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0), -dx * 0.005));
+      lastX = e.clientX; lastY = e.clientY;
+    });
+    renderer.domElement.addEventListener('wheel', e => {
+      const d = Math.max(130, Math.min(1200, camera.position.length() + e.deltaY * 0.5));
+      camera.position.setLength(d);
+    });
+  }
 
   // Lighting
   scene.add(new T.AmbientLight(0x888888));
@@ -735,7 +755,8 @@ function initGlobe() {
     const mp = toXYZ(0, moonAngle * 180 / Math.PI, MOON_R);
     moonMesh.position.copy(mp);
     earthMesh.rotation.y += 0.0008;
-    controls.update();
+    if (controls) controls.update();
+    else camera.position.applyQuaternion(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0), 0.002));
     renderer.render(scene, camera);
   }
   animate();
