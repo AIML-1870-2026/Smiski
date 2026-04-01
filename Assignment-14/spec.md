@@ -146,16 +146,17 @@ Rendered by `initGlobe()` — called lazily when the tab is first activated.
 - Container: `#globe-wrap`, `560px` tall, dark background
 - Auto-rotates at speed 0.35; zoom enabled; initial altitude 3.5
 
-**Object rendering — all objects injected directly into THREE.js scene inside `onGlobeReady`:**
-- Globe.gl's `customThreeObjectsData` / `customThreeObjectUpdate` pipeline is NOT used (unreliable for arbitrary 3D positions); all meshes are added via `scene.add()` instead
+**Object rendering:**
+- Uses globe.gl's `customThreeObjectsData` / `customThreeObject` / `customThreeObjectUpdate` pipeline
 - All asteroids from `neoData` (the full 7-day NeoWs feed, typically 50–100 objects)
 - Each asteroid assigned a random lat/lng; altitude derived from `distToAlt(km)` (log-scale, 0.3–3.8 globe-radii above surface)
-- Positions computed with `myGlobe.getCoords(lat, lng, alt)` inside `onGlobeReady` where globe is fully initialized
-- Non-hazardous asteroids: teal `IcosahedronGeometry` (detail 1, `flatShading: true`) — rocky, faceted look; radius 3.5
-- Potentially hazardous asteroids: red `IcosahedronGeometry`, radius 5.5; PHA flag from `obj.is_potentially_hazardous_asteroid`
-- Each asteroid has a floating `makeNameSprite` label positioned just above the mesh
-- Moon: `SphereGeometry` (radius 10) with a procedurally generated crater texture (canvas-based grey with radial-gradient blobs); slow Y-axis rotation animation
-- Click detection uses THREE.js `Raycaster` against all meshes; no globe.gl click handler needed
+- Positions baked into each data object as `sx/sy/sz` using `toXYZ(lat, lng, alt)` — same formula as globe.gl's `getCoords` (globe radius = 100, Y-up): `phi=(90-lat)*PI/180`, `r=100*(1+alt)`, `sx=r*sin(phi)*cos(theta)`, `sy=r*cos(phi)`, `sz=r*sin(phi)*sin(theta)`
+- `customThreeObjectUpdate` simply calls `group.position.set(obj.sx, obj.sy, obj.sz)` — no runtime `getCoords` call needed
+- Non-hazardous asteroids: teal `IcosahedronGeometry` (radius 5, detail 1, `flatShading: true`) — rocky, faceted look
+- Potentially hazardous asteroids: red `IcosahedronGeometry`, radius 8
+- Each object has a floating `makeNameSprite` label
+- Moon: grey `SphereGeometry` (radius 12) with emissive glow; click handled via `onCustomObjectClick`
+- `animateIn: false` and a `requestAnimationFrame` delay before `Globe()` call ensure the container is laid out before WebGL initializes
 
 **Moon orbit:**
 - Orbits at `MOON_ORBIT_SPEED = 0.003` rad/frame via `requestAnimationFrame` inside `onGlobeReady`
