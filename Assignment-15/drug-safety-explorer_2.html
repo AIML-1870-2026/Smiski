@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drug Safety Explorer — OpenFDA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b0f;--surface:#0f1318;--surface2:#161c24;--surface3:#1d2530;
+  --border:#1e2832;--border2:#27333f;
+  --green:#00e87a;--green-dim:#00b85f;--green-bg:rgba(0,232,122,0.08);
+  --amber:#f5a623;--amber-bg:rgba(245,166,35,0.1);
+  --red:#ff4d4d;--red-bg:rgba(255,77,77,0.1);
+  --blue:#4da6ff;--blue-bg:rgba(77,166,255,0.1);
+  --purple:#b388ff;--purple-bg:rgba(179,136,255,0.1);
+  --text:#dce6f0;--text2:#8899aa;--text3:#4a5a6a;
+  --font-mono:'IBM Plex Mono',monospace;--font-sans:'IBM Plex Sans',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-height:100vh;font-size:14px;line-height:1.6}
+.page{max-width:1100px;margin:0 auto;padding:2rem 1.5rem 4rem}
+.header{margin-bottom:1.75rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border2)}
+.header-top{display:flex;align-items:center;gap:10px;margin-bottom:.5rem}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--green);position:relative;flex-shrink:0}
+.pulse-dot::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--green);opacity:0;animation:pulse 2s ease-out infinite}
+@keyframes pulse{0%{opacity:.6;transform:scale(.8)}100%{opacity:0;transform:scale(1.8)}}
+.htag{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text3);text-transform:uppercase}
+.htitle{font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1.1}
+.htitle span{color:var(--green)}
+.hsub{font-size:13px;color:var(--text2);margin-top:6px;max-width:620px}
+.hactions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.gbtn{background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--font-mono);font-size:11px;padding:5px 12px;border-radius:3px;cursor:pointer;letter-spacing:.06em;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.gbtn:hover{border-color:var(--blue);color:var(--blue)}
+.gbtn .qi{width:14px;height:14px;border-radius:50%;background:var(--blue-bg);border:1px solid var(--blue);color:var(--blue);font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.edu-banner{background:var(--amber-bg);border:1px solid rgba(245,166,35,.25);border-left:3px solid var(--amber);border-radius:4px;padding:.75rem 1rem;margin-bottom:1.5rem;font-size:12px;color:var(--amber);font-family:var(--font-mono);line-height:1.5}
+.edu-banner strong{display:block;letter-spacing:.05em;margin-bottom:3px}
+.mode-sw{display:flex;gap:6px;margin-bottom:1.5rem}
+.mbtn{background:var(--surface);border:1px solid var(--border2);color:var(--text2);font-family:var(--font-mono);font-size:11px;padding:8px 16px;border-radius:4px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;transition:all .15s}
+.mbtn:hover{border-color:var(--border);color:var(--text)}
+.mbtn.ag{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+.mbtn.ap{background:var(--purple-bg);border-color:var(--purple);color:var(--purple)}
+.search-sec{margin-bottom:1.25rem}
+.srow{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:10px}
+.field{display:flex;flex-direction:column;gap:5px}
+.flabel{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
+.diw{position:relative}
+.di{width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:14px;padding:10px 14px;border-radius:4px;outline:none;transition:border-color .15s,background .15s}
+.di:focus{border-color:var(--green);background:var(--surface2)}
+.di::placeholder{color:var(--text3)}
+.acl{position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--surface2);border:1px solid var(--border2);border-top:none;border-radius:0 0 4px 4px;max-height:200px;overflow-y:auto;display:none}
+.acl.open{display:block}
+.aci{padding:8px 14px;font-family:var(--font-mono);font-size:12px;cursor:pointer;color:var(--text2);border-bottom:1px solid var(--border);transition:background .1s}
+.aci:hover{background:var(--surface3);color:var(--green)}
+.aci:last-child{border-bottom:none}
+.run-btn{background:var(--green);color:#000;font-family:var(--font-mono);font-weight:600;font-size:13px;padding:11px 22px;border:none;border-radius:4px;cursor:pointer;letter-spacing:.06em;transition:background .15s,transform .1s;white-space:nowrap;height:42px;display:inline-flex;align-items:center;gap:8px}
+.run-btn:hover{background:var(--green-dim)}
+.run-btn:active{transform:scale(.98)}
+.run-btn:disabled{background:#1a2a1a;color:var(--text3);cursor:not-allowed}
+.pbtn{background:var(--purple);color:#fff}
+.pbtn:hover{background:#9c6ff5}
+.pbtn:disabled{background:#1e1a2a;color:var(--text3)}
+.exbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.exlabel{font-size:11px;color:var(--text3);font-family:var(--font-mono)}
+.exchip{background:var(--surface2);border:1px solid var(--border2);font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:3px;cursor:pointer;color:var(--text2);transition:all .15s}
+.exchip:hover{border-color:var(--green);color:var(--green)}
+.tabs{display:flex;gap:4px;margin-bottom:1.25rem;flex-wrap:wrap}
+.tbtn{background:transparent;border:1px solid var(--border);color:var(--text3);font-family:var(--font-mono);font-size:11px;padding:6px 14px;border-radius:3px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;transition:all .15s}
+.tbtn:hover{color:var(--text2);border-color:var(--border2)}
+.tbtn.active{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+.clsgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:1.25rem}
+.clsc{background:var(--surface);border:1px solid var(--border2);border-radius:5px;padding:.75rem 1rem;cursor:pointer;transition:all .15s}
+.clsc:hover{border-color:var(--purple);background:var(--surface2)}
+.clsc.sel{border-color:var(--purple);background:var(--purple-bg)}
+.clsc-name{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px}
+.clsc.sel .clsc-name{color:var(--purple)}
+.clsc-desc{font-size:11px;color:var(--text3);line-height:1.4}
+.drugrow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.25rem;align-items:center}
+.dchip{background:var(--surface2);border:1px solid var(--border2);font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:3px;color:var(--text2);cursor:pointer;transition:all .15s}
+.dchip:hover{border-color:var(--purple);color:var(--purple)}
+.dchip.on{background:var(--purple-bg);border-color:var(--purple);color:var(--purple)}
+.sbar{font-family:var(--font-mono);font-size:11px;color:var(--text3);min-height:18px;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.sok{color:var(--green)}.serr{color:var(--red)}.sload{color:var(--amber)}
+.spin{width:10px;height:10px;border:1.5px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:1.25rem;min-height:250px}
+.panel.full{grid-column:1/-1}
+.ph{display:flex;align-items:center;gap:8px;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.pname{font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--green);letter-spacing:.02em}
+.pname.pu{color:var(--purple)}
+.psub{font-family:var(--font-mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-left:auto}
+/* help icon — span not button, avoids invalid nesting */
+.hi{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--text3);color:var(--text3);font-size:9px;cursor:pointer;transition:all .15s;flex-shrink:0;font-family:var(--font-mono);line-height:1;user-select:none}
+.hi:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
+.mrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+.met{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:10px 12px}
+.mv{font-family:var(--font-mono);font-size:20px;font-weight:600}
+.cg{color:var(--green)}.ca{color:var(--amber)}.cr{color:var(--red)}.cb{color:var(--blue)}.cp{color:var(--purple)}
+.ml{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-top:3px;font-family:var(--font-sans)}
+.sec{font-family:var(--font-mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin:.9rem 0 .5rem;display:flex;align-items:center;gap:6px}
+.br{margin-bottom:7px}
+.bm{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+.bn{font-family:var(--font-mono);font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:75%}
+.bc{font-family:var(--font-mono);font-size:10px;color:var(--text3);flex-shrink:0}
+.bt{background:var(--surface3);border-radius:1px;height:5px;overflow:hidden}
+.bf{height:100%;border-radius:1px;transition:width .5s cubic-bezier(.4,0,.2,1);background:var(--green)}
+.bf.a{background:var(--amber)}.bf.r{background:var(--red)}.bf.b{background:var(--blue)}.bf.p{background:var(--purple)}
+.pgf{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:.75rem}
+.pill{background:var(--surface2);border:1px solid var(--border2);font-family:var(--font-mono);font-size:11px;padding:3px 9px;border-radius:2px;color:var(--text2);display:flex;align-items:center;gap:6px}
+.pilln{color:var(--amber);font-size:10px}
+.ctbl{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:12px}
+.ctbl th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border2)}
+.ctbl th:not(:first-child){text-align:center}
+.ctbl td{padding:9px 12px;border-bottom:1px solid var(--border)}
+.ctbl td:not(:first-child){text-align:center;font-weight:500}
+.ctbl tr:last-child td{border-bottom:none}
+.ctbl .rl{color:var(--text2);font-size:12px}
+.vb{color:var(--green)}.vw{color:var(--red)}.vn{color:var(--text)}
+.rcl{display:flex;flex-direction:column;gap:10px}
+.rc{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--border2);border-radius:4px;padding:.9rem 1rem}
+.rc.c1{border-left-color:var(--red)}.rc.c2{border-left-color:var(--amber)}.rc.c3{border-left-color:var(--blue)}
+.rt{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.rb{font-family:var(--font-mono);font-size:10px;font-weight:600;padding:2px 8px;border-radius:2px;flex-shrink:0;letter-spacing:.05em}
+.b1{background:var(--red-bg);color:var(--red);border:1px solid rgba(255,77,77,.25)}
+.b2{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,166,35,.25)}
+.b3{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(77,166,255,.25)}
+.rprod{font-family:var(--font-sans);font-size:13px;font-weight:500;flex:1;min-width:0}
+.rdate{font-family:var(--font-mono);font-size:10px;color:var(--text3);flex-shrink:0}
+.rreason{font-size:12px;color:var(--text2);line-height:1.5}
+.rco{font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-top:4px}
+.ocg{display:flex;gap:6px;align-items:flex-end;height:60px;margin-bottom:.5rem}
+.occ{display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:4px}
+.ocb{width:100%;border-radius:1px 1px 0 0;min-height:2px}
+.ocl{font-family:var(--font-mono);font-size:9px;color:var(--text3);text-align:center;line-height:1.2}
+.sexbar{height:12px;border-radius:2px;overflow:hidden;display:flex;margin:8px 0}
+.sm{background:var(--blue)}.sf{background:#ff7eb3}.su{background:var(--border2)}
+.sleg{display:flex;gap:14px;font-size:11px;font-family:var(--font-mono)}
+.sli{display:flex;align-items:center;gap:5px;color:var(--text2)}
+.sw{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.ls{margin-bottom:1rem}
+.lst{font-family:var(--font-mono);font-size:11px;color:var(--green);letter-spacing:.06em;margin-bottom:6px}
+.lsc{font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:.75rem 1rem;max-height:120px;overflow-y:auto}
+.ccg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:1rem}
+.cdr{background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:.9rem 1rem;position:relative}
+.cdname{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--purple);margin-bottom:.5rem}
+.cdtot{font-family:var(--font-mono);font-size:22px;font-weight:600;color:var(--text)}
+.cdlab{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-family:var(--font-sans)}
+.rnk{position:absolute;top:8px;right:10px;font-family:var(--font-mono);font-size:10px;color:var(--text3)}
+.rnk.r1{color:var(--amber)}
+.clt{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:12px;margin-top:.5rem}
+.clt th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border2)}
+.clt th:not(:first-child){text-align:right}
+.clt td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px}
+.clt td:not(:first-child){text-align:right}
+.clt tr:last-child td{border-bottom:none}
+.clt .dc{color:var(--purple);font-weight:600}
+.cbest{color:var(--green)}.cworst{color:var(--red)}
+.crn{color:var(--text3);margin-right:6px}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:180px;gap:8px}
+.ei{font-size:28px;opacity:.25}
+.et{font-family:var(--font-mono);font-size:12px;color:var(--text3);letter-spacing:.05em}
+.emsg{font-family:var(--font-mono);font-size:12px;color:var(--red);padding:.5rem 0}
+.nd{font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:.5rem 0}
+.inote{font-size:11px;color:var(--text3);font-family:var(--font-sans);line-height:1.6;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:.6rem .8rem;margin-top:.75rem}
+.lnk{background:none;border:none;color:var(--blue);font-size:11px;cursor:pointer;font-family:var(--font-mono);padding:0;text-decoration:underline}
+.footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+.fdaattr{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:.9rem 1rem;font-size:11px;color:var(--text3);line-height:1.6;margin-bottom:1rem}
+.fdaattr strong{color:var(--text2);display:block;margin-bottom:4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-family:var(--font-mono)}
+.flinks{display:flex;gap:16px;font-size:11px;font-family:var(--font-mono)}
+.flinks a{color:var(--text3);text-decoration:none;transition:color .15s}
+.flinks a:hover{color:var(--green)}
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;z-index:1000;background:rgba(8,11,15,.88);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:1.5rem}
+.mo.open{display:flex}
+.md{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:1.75rem;max-width:540px;width:100%;max-height:82vh;overflow-y:auto;position:relative;animation:mIn .18s ease}
+@keyframes mIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.mx{position:absolute;top:14px;right:16px;background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:var(--font-mono);font-size:12px;width:26px;height:26px;border-radius:3px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.mx:hover{border-color:var(--text2);color:var(--text)}
+.mtag{font-family:var(--font-mono);font-size:10px;color:var(--blue);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem}
+.mtitle{font-size:18px;font-weight:600;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.mbody{font-size:13px;color:var(--text2);line-height:1.7}
+.mbody h4{font-family:var(--font-mono);font-size:11px;color:var(--green);letter-spacing:.08em;text-transform:uppercase;margin:1rem 0 .4rem}
+.mbody p{margin-bottom:.75rem}
+.mbody ul{padding-left:1.2rem;margin-bottom:.75rem}
+.mbody li{margin-bottom:.4rem}
+.hl{background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--amber);border-radius:3px;padding:.6rem .9rem;margin:.75rem 0;font-size:12px;color:var(--amber)}
+.dp{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:.5rem .75rem;font-size:12px;margin-bottom:6px}
+.dp strong{color:var(--red);font-family:var(--font-mono)}
+code{background:var(--surface2);padding:1px 5px;border-radius:2px;color:var(--green);font-family:var(--font-mono)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--surface2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+@media(max-width:680px){
+  .pgrid{grid-template-columns:1fr}
+  .srow{grid-template-columns:1fr 1fr}
+  .srow .field:last-child{grid-column:1/-1}
+  .run-btn{width:100%;justify-content:center}
+  .mrow{grid-template-columns:1fr 1fr}
+  .ccg{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="header">
+  <div class="header-top"><div class="pulse-dot"></div><span class="htag">OpenFDA // FAERS + Recalls + Labels</span></div>
+  <h1 class="htitle">Drug Safety <span>Explorer</span></h1>
+  <p class="hsub">Interactive adverse event analysis powered by live FDA data. Compare drugs, explore reactions, review recalls, and investigate drug classes.</p>
+  <div class="hactions">
+    <button class="gbtn" onclick="openM('m-about')"><span class="qi">?</span> How to Read This Data</button>
+    <button class="gbtn" onclick="openM('m-faers')"><span class="qi">?</span> About FAERS Reports</button>
+    <button class="gbtn" onclick="openM('m-pairs')"><span class="qi">?</span> Known Dangerous Pairs</button>
+  </div>
+</div>
+
+<div class="edu-banner">
+  <strong>⚠ EDUCATIONAL USE ONLY</strong>
+  This tool is for educational and informational purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider with questions about medications.
+</div>
+
+<div class="mode-sw">
+  <button class="mbtn ag" id="mA" onclick="setMode('drug')">⬡ Drug Comparison</button>
+  <button class="mbtn" id="mB" onclick="setMode('class')">⬡ Drug Class Explorer</button>
+</div>
+
+<!-- DRUG MODE -->
+<div id="drug-mode">
+  <div class="search-sec">
+    <div class="srow">
+      <div class="field">
+        <div class="flabel">Drug A</div>
+        <div class="diw">
+          <input class="di" id="d1" placeholder="e.g. warfarin" autocomplete="off" oninput="doAC(this,'a1')" onkeydown="acK(event,'a1')">
+          <div class="acl" id="a1"></div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="flabel">Drug B (comparison)</div>
+        <div class="diw">
+          <input class="di" id="d2" placeholder="e.g. ibuprofen" autocomplete="off" oninput="doAC(this,'a2')" onkeydown="acK(event,'a2')">
+          <div class="acl" id="a2"></div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="flabel">&nbsp;</div>
+        <button class="run-btn" id="runBtn" onclick="runQ()">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><polygon points="2,1 11,6 2,11"/></svg>
+          ANALYZE
+        </button>
+      </div>
+    </div>
+    <div class="exbar">
+      <span class="exlabel">try:</span>
+      <span class="exchip" onclick="loadEx('warfarin','ibuprofen')">warfarin + ibuprofen</span>
+      <span class="exchip" onclick="loadEx('metformin','lisinopril')">metformin + lisinopril</span>
+      <span class="exchip" onclick="loadEx('aspirin','acetaminophen')">aspirin + acetaminophen</span>
+      <span class="exchip" onclick="loadEx('atorvastatin','')">atorvastatin only</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tbtn active" id="tab-overview"     onclick="setTab('overview')">Overview</button>
+    <button class="tbtn"        id="tab-reactions"    onclick="setTab('reactions')">Top Reactions</button>
+    <button class="tbtn"        id="tab-outcomes"     onclick="setTab('outcomes')">Outcomes</button>
+    <button class="tbtn"        id="tab-demographics" onclick="setTab('demographics')">Demographics</button>
+    <button class="tbtn"        id="tab-recalls"      onclick="setTab('recalls')">Recalls</button>
+    <button class="tbtn"        id="tab-label"        onclick="setTab('label')">Label Info</button>
+    <button class="tbtn"        id="tab-coadmin"      onclick="setTab('coadmin')">Co-Admin</button>
+  </div>
+
+  <div class="sbar" id="sb"><span class="sload">◎ Loading example…</span></div>
+  <div id="mc"><div class="pgrid"><div class="panel full"><div class="empty"><div class="ei">⬡</div><div class="et">awaiting query…</div></div></div></div></div>
+</div>
+
+<!-- CLASS MODE -->
+<div id="class-mode" style="display:none">
+  <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.6rem;display:flex;align-items:center;gap:8px">
+    Select a Drug Class <span class="hi" onclick="openM('m-class')">?</span>
+  </div>
+  <div class="clsgrid" id="clsgrid"></div>
+  <div id="clsdrugs" style="display:none">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem">Drugs in this class — click to toggle</div>
+    <div class="drugrow" id="drugrow"></div>
+    <button class="run-btn pbtn" id="clsBtn" onclick="runCls()" style="margin-bottom:1.25rem">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><polygon points="2,1 11,6 2,11"/></svg>
+      COMPARE CLASS
+    </button>
+  </div>
+  <div class="sbar" id="csb"></div>
+  <div id="clsc"><div class="pgrid"><div class="panel full"><div class="empty"><div class="ei">⬡</div><div class="et">select a drug class above…</div></div></div></div></div>
+</div>
+
+<div class="footer">
+  <div class="fdaattr">
+    <strong>Required FDA Attribution</strong>
+    This product uses publicly available data from the U.S. Food and Drug Administration (FDA). FDA is not responsible for this product and does not endorse or recommend this or any other product.
+  </div>
+  <div class="flinks">
+    <a href="https://open.fda.gov" target="_blank">OpenFDA →</a>
+    <a href="https://open.fda.gov/apis/drug/event/" target="_blank">FAERS API →</a>
+    <a href="https://open.fda.gov/apis/drug/enforcement/" target="_blank">Recalls API →</a>
+  </div>
+</div>
+</div>
+
+<!-- MODALS -->
+<div class="mo" id="m-about" onclick="ovc(event,this)"><div class="md"><button class="mx" onclick="closeM('m-about')">✕</button><div class="mtag">// About this tool</div><div class="mtitle">How to Read This Data</div><div class="mbody"><p>This tool queries the <strong>FDA Adverse Event Reporting System (FAERS)</strong> — voluntary reports submitted when a drug is suspected of causing a problem.</p><div class="hl">⚠ More reports ≠ more dangerous. A drug with 500,000 reports is likely just prescribed to millions of people. Always compare <em>rates</em>, not raw counts.</div><h4>What this tool can tell you</h4><ul><li>Which adverse reactions are most frequently reported</li><li>How serious reported events tend to be (hospitalization, death rates)</li><li>How a drug's safety profile compares to another</li><li>Whether a drug has been recalled and why</li><li>What the official FDA label says about warnings and interactions</li></ul><h4>What this tool cannot tell you</h4><ul><li>Whether a drug <em>caused</em> a reaction — correlations only</li><li>Your personal risk — individual factors matter enormously</li><li>Whether a drug is safe or unsafe for you specifically</li></ul></div></div></div>
+
+<div class="mo" id="m-faers" onclick="ovc(event,this)"><div class="md"><button class="mx" onclick="closeM('m-faers')">✕</button><div class="mtag">// Data source</div><div class="mtitle">About FAERS Reports</div><div class="mbody"><p>FAERS is the <strong>FDA Adverse Event Reporting System</strong>. Reports are submitted by patients, doctors, pharmacists, and manufacturers.</p><h4>Critical limitations</h4><ul><li><strong>Voluntary reporting</strong> — only a fraction of real events are reported</li><li><strong>No denominator</strong> — we don't know how many people took the drug, so true incidence rates can't be calculated</li><li><strong>Reporting bias</strong> — newer and heavily marketed drugs get more reports</li><li><strong>Correlation, not causation</strong> — a patient may have been taking 10 drugs at once</li></ul><div class="hl">The FDA uses FAERS as a signal detection tool — to flag patterns worth investigating, not to prove a drug is dangerous.</div></div></div></div>
+
+<div class="mo" id="m-pairs" onclick="ovc(event,this)"><div class="md"><button class="mx" onclick="closeM('m-pairs')">✕</button><div class="mtag">// Drug interactions</div><div class="mtitle">Known Dangerous Drug Pairs</div><div class="mbody"><p>These classic combinations are well-documented as dangerous. High co-admin report counts for these pairs in FAERS can reflect real interaction signals.</p><div class="dp"><strong>Warfarin + NSAIDs</strong> (ibuprofen, naproxen)<br><span style="color:var(--text2)">Risk: Serious bleeding. NSAIDs reduce platelet function and can increase warfarin's anticoagulant effect dramatically.</span></div><div class="dp"><strong>MAO Inhibitors + Serotonergic drugs</strong> (SSRIs, tramadol)<br><span style="color:var(--text2)">Risk: Serotonin syndrome — potentially fatal agitation, rapid heart rate, high temperature, and seizures.</span></div><div class="dp"><strong>Methotrexate + NSAIDs</strong><br><span style="color:var(--text2)">Risk: Methotrexate toxicity. NSAIDs reduce kidney clearance causing dangerous drug build-up.</span></div><div class="dp"><strong>Statins + CYP3A4 inhibitors</strong> (clarithromycin)<br><span style="color:var(--text2)">Risk: Rhabdomyolysis — muscle breakdown that can cause kidney failure.</span></div><div class="dp"><strong>ACE Inhibitors + Potassium-sparing diuretics</strong><br><span style="color:var(--text2)">Risk: Dangerously high potassium levels, which can cause fatal cardiac arrhythmias.</span></div><p style="font-size:12px;color:var(--text3);margin-top:.5rem">Try the Co-Admin tab to see FAERS report counts for any drug pair.</p></div></div></div>
+
+<div class="mo" id="m-reactions" onclick="ovc(event,this)"><div class="md"><button class="mx" onclick="closeM('m-reactions')">✕</button><div class="mtag">// Adverse reactions</div><div class="mtitle">Understanding Reported Reactions</div><div class="mbody"><p>Reactions are coded using <strong>MedDRA</strong> — a standardized medical dictionary used globally by regulatory agencies.</p><h4>Why some reactions look unexpected</h4><ul><li><em>Drug ineffective</em> — patient didn't respond to treatment</li><li><em>Off-label use</em> — drug used for unapproved purpose</li><li><em>Death</em> — this is an outcome, not a reaction itself</li></ul><h4>High counts don't mean high risk</h4><p>A reaction appearing 10,000 times for a drug with 2 million reports is quite rare. Consider counts relative to total reports shown in Overview.</p><div class="hl">Top 3 reactions (amber) are most frequent — frequency alone doesn't indicate severity.</div></div></div></div>
+
+<div class="mo" id="m-outcomes" onclick="ovc(event,this)"><div class="md"><button class="mx" onclick="closeM('m-outcomes')">✕</button><div class="mtag">// Outcomes</div><div class="mtitle">How to Interpret Outcomes</div><div class="mbody"><p>Each FAERS report includes an outcome — what happened to the patient. These are self-reported at time of filing.</p><h4>Outcome categories</h4><ul><li><strong style="color:var(--green)">Recovered</strong> — patient fully recovered</li><li><strong style="color:var(--blue)">Recovering</strong> — still recovering at time of report</li><li><strong style="color:var(--amber)">Not recovered</strong> — condition persisted</li><li><strong style="color:var(--red)">Fatal</strong> — patient died (may or may not be drug-related)</li><li><strong style="color:var(--text3)">Unknown</strong> — outcome not provided</li></ul><div class="hl">A high fatal percentage may mean the drug is prescribed to critically ill patients — not that the drug itself is particularly deadly.</div></div></div></div>
+
+<div class="mo" id="m-recalls" onclick="ovc(event,this)"><div class="md"><button class="mx" onclick="closeM('m-recalls')">✕</button><div class="mtag">// Drug recalls</div><div class="mtitle">Understanding Recall Classifications</div><div class="mbody"><ul><li><strong style="color:var(--red)">Class I</strong> — Most serious. Reasonable probability of serious harm or death. Examples: contaminated injectables, wrong dosage strength.</li><li style="margin-top:.5rem"><strong style="color:var(--amber)">Class II</strong> — Moderate. May cause temporary adverse consequences; serious consequences are remote.</li><li style="margin-top:.5rem"><strong style="color:var(--blue)">Class III</strong> — Least serious. Unlikely to cause health consequences but violates FDA regulations.</li></ul><h4>Why some drugs show no recalls</h4><p>No results usually means no recent recalls, or the drug name differs in the enforcement database. Recalls are product-specific — brand names and lot numbers matter more here than generic names.</p></div></div></div>
+
+<div class="mo" id="m-label" onclick="ovc(event,this)"><div class="md"><button class="mx" onclick="closeM('m-label')">✕</button><div class="mtag">// Drug labels</div><div class="mtitle">What Drug Labels Actually Tell You</div><div class="mbody"><p>The FDA-approved label ("prescribing information") is the most authoritative source of drug information — reviewed and approved by the FDA before a drug goes to market.</p><h4>Key sections</h4><ul><li><strong>Warnings</strong> — Black box warnings are the most serious and legally required</li><li><strong>Indications</strong> — What the drug is officially approved to treat</li><li><strong>Contraindications</strong> — Who absolutely should not take this drug</li><li><strong>Adverse Reactions</strong> — Side effects observed in clinical trials</li><li><strong>Drug Interactions</strong> — Known interactions with other medications</li></ul><div class="hl">Unlike FAERS reports, label data is carefully reviewed and verified by the FDA before approval.</div></div></div></div>
+
+<div class="mo" id="m-coadmin" onclick="ovc(event,this)"><div class="md"><button class="mx" onclick="closeM('m-coadmin')">✕</button><div class="mtag">// Co-administration</div><div class="mtitle">Analyzing Drug Co-Administration</div><div class="mbody"><p>This tab queries FAERS for reports where <strong>both drugs appear in the same report</strong> — meaning both were taken by the same patient at the same time.</p><h4>What high co-admin counts might mean</h4><ul><li><strong>Common co-prescription</strong> — the drugs are routinely prescribed together</li><li><strong>Interaction signal</strong> — the combination generates more reports than expected</li><li><strong>Overlapping patient populations</strong> — both drugs treat conditions common in the same group</li></ul><div class="hl">Co-administration data alone cannot identify a drug interaction. For confirmed interactions, check the Label Info tab or a clinical source like Lexicomp.</div></div></div></div>
+
+<div class="mo" id="m-class" onclick="ovc(event,this)"><div class="md"><button class="mx" onclick="closeM('m-class')">✕</button><div class="mtag">// Drug class explorer</div><div class="mtitle">Exploring Drug Classes</div><div class="mbody"><p>This mode lets you compare multiple drugs within the same therapeutic class — medications that work similarly and treat the same conditions.</p><h4>Why compare within a class?</h4><p>Drugs in the same class often have similar mechanisms but different safety profiles. For example, all statins lower cholesterol, but some may have more muscle-related adverse event reports than others.</p><h4>How to use it</h4><ul><li>Select a drug class (e.g. "Statins")</li><li>Toggle individual drugs on/off to narrow the comparison (minimum 2)</li><li>Click "Compare Class" to load data for all selected drugs simultaneously</li><li>The leaderboard ranks drugs by serious event rate within the class</li></ul><div class="hl">Rankings reflect reporting rates, not proven safety differences. Always discuss medication choices with a doctor.</div></div></div></div>
+
+<script>
+// MODAL
+function openM(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden'}
+function closeM(id){document.getElementById(id).classList.remove('open');document.body.style.overflow=''}
+function ovc(e,el){if(e.target===el){el.classList.remove('open');document.body.style.overflow=''}}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    document.querySelectorAll('.mo.open').forEach(function(m){m.classList.remove('open')});
+    document.body.style.overflow='';
+  }
+});
+
+// STATE
+var curTab='overview',drugData={},busy=false,acT={},curMode='drug',selCls=null,actDrugs=[];
+
+// DRUG CLASSES
+var CLS=[
+  {id:'statins',name:'Statins',desc:'Cholesterol-lowering (HMG-CoA reductase inhibitors)',drugs:['atorvastatin','simvastatin','rosuvastatin','pravastatin','lovastatin','fluvastatin']},
+  {id:'ssri',name:'SSRIs',desc:'Antidepressants / anxiety',drugs:['sertraline','fluoxetine','escitalopram','paroxetine','citalopram','fluvoxamine']},
+  {id:'ace',name:'ACE Inhibitors',desc:'Blood pressure medications',drugs:['lisinopril','enalapril','ramipril','captopril','benazepril','fosinopril']},
+  {id:'nsaid',name:'NSAIDs',desc:'Anti-inflammatory drugs',drugs:['ibuprofen','naproxen','celecoxib','diclofenac','meloxicam','indomethacin']},
+  {id:'bb',name:'Beta Blockers',desc:'Heart rate / blood pressure',drugs:['metoprolol','atenolol','carvedilol','propranolol','bisoprolol','labetalol']},
+  {id:'ppi',name:'PPIs',desc:'Acid reflux / proton pump inhibitors',drugs:['omeprazole','pantoprazole','esomeprazole','lansoprazole','rabeprazole']},
+  {id:'benzo',name:'Benzodiazepines',desc:'Anxiety / sedation medications',drugs:['alprazolam','diazepam','lorazepam','clonazepam','temazepam']},
+  {id:'arb',name:'ARBs',desc:'Angiotensin receptor blockers',drugs:['losartan','valsartan','irbesartan','olmesartan','telmisartan','candesartan']},
+];
+
+// MODE
+function setMode(m){
+  curMode=m;
+  document.getElementById('mA').className='mbtn'+(m==='drug'?' ag':'');
+  document.getElementById('mB').className='mbtn'+(m==='class'?' ap':'');
+  document.getElementById('drug-mode').style.display=m==='drug'?'':'none';
+  document.getElementById('class-mode').style.display=m==='class'?'':'none';
+}
+
+// BUILD CLASS GRID
+function buildCls(){
+  var h='';
+  CLS.forEach(function(c){
+    h+='<div class="clsc" id="cls-'+c.id+'" onclick="selClass(\''+c.id+'\')">'
+      +'<div class="clsc-name">'+c.name+'</div>'
+      +'<div class="clsc-desc">'+c.desc+'</div></div>';
+  });
+  document.getElementById('clsgrid').innerHTML=h;
+}
+
+function selClass(id){
+  var found=null;
+  CLS.forEach(function(c){if(c.id===id)found=c});
+  if(!found)return;
+  selCls=found;
+  document.querySelectorAll('.clsc').forEach(function(c){c.classList.remove('sel')});
+  document.getElementById('cls-'+id).classList.add('sel');
+  actDrugs=found.drugs.slice();
+  drawDrugs();
+  document.getElementById('clsdrugs').style.display='';
+}
+
+function drawDrugs(){
+  var h='';
+  selCls.drugs.forEach(function(d){
+    h+='<div class="dchip'+(actDrugs.indexOf(d)>=0?' on':'')+'" onclick="togDrug(\''+d+'\')">'+d+'</div>';
+  });
+  document.getElementById('drugrow').innerHTML=h;
+}
+
+function togDrug(d){
+  var i=actDrugs.indexOf(d);
+  if(i>=0){if(actDrugs.length<=2)return;actDrugs.splice(i,1)}
+  else actDrugs.push(d);
+  drawDrugs();
+}
+
+// UTILS
+function fn(n){if(n==null||isNaN(n))return'0';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(1)+'K';return''+n}
+function pct(a,b){return b>0?Math.round(a/b*100):0}
+function tr(s,n){return s&&s.length>n?s.slice(0,n)+'…':(s||'')}
+function fd(s){var d=''+( s||'');return d.length===8?d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8):d}
+
+// STATUS
+function ss(t,m){
+  var e=document.getElementById('sb');
+  if(t==='l')e.innerHTML='<div class="spin"></div><span class="sload">'+m+'</span>';
+  else if(t==='ok')e.innerHTML='<span class="sok">✓ '+m+'</span>';
+  else e.innerHTML='<span class="serr">✗ '+m+'</span>';
+}
+function cs(t,m){
+  var e=document.getElementById('csb');
+  if(t==='l')e.innerHTML='<div class="spin"></div><span class="sload">'+m+'</span>';
+  else if(t==='ok')e.innerHTML='<span class="sok">✓ '+m+'</span>';
+  else e.innerHTML='<span class="serr">✗ '+m+'</span>';
+}
+
+// API
+async function api(ep,p){
+  var url='https://api.fda.gov/drug/'+ep+'.json?'+new URLSearchParams(p);
+  var r=await fetch(url);
+  if(!r.ok){
+    if(r.status===404)return{results:[],meta:{results:{total:0}}};
+    var e=await r.json().catch(function(){return{}});
+    throw new Error((e&&e.error&&e.error.message)||'HTTP '+r.status);
+  }
+  return r.json();
+}
+
+// AUTOCOMPLETE
+function doAC(inp,lid){
+  var v=inp.value.trim(),l=document.getElementById(lid);
+  clearTimeout(acT[lid]);
+  if(v.length<2){l.classList.remove('open');return}
+  acT[lid]=setTimeout(async function(){
+    try{
+      var r1=await api('label',{search:'openfda.brand_name:"'+v+'"',count:'openfda.brand_name.exact',limit:5}).catch(function(){return null});
+      var r2=await api('label',{search:'openfda.generic_name:"'+v+'"',count:'openfda.generic_name.exact',limit:5}).catch(function(){return null});
+      var ns=new Set();
+      if(r1&&r1.results)r1.results.forEach(function(x){ns.add(x.term.toLowerCase())});
+      if(r2&&r2.results)r2.results.forEach(function(x){ns.add(x.term.toLowerCase())});
+      if(!ns.size){l.classList.remove('open');return}
+      var h='';
+      Array.from(ns).slice(0,8).forEach(function(n){
+        h+='<div class="aci" onclick="pickAC(\''+inp.id+'\',\''+lid+'\',\''+n+'\')">'+n+'</div>';
+      });
+      l.innerHTML=h;l.classList.add('open');
+    }catch(e){l.classList.remove('open')}
+  },300);
+}
+function pickAC(iid,lid,v){document.getElementById(iid).value=v;document.getElementById(lid).classList.remove('open')}
+function acK(e,lid){if(e.key==='Escape'||e.key==='Enter')document.getElementById(lid).classList.remove('open')}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.diw'))document.querySelectorAll('.acl').forEach(function(l){l.classList.remove('open')});
+});
+
+// EXAMPLES
+function loadEx(a,b){document.getElementById('d1').value=a;document.getElementById('d2').value=b;runQ()}
+
+// TABS
+function setTab(t){
+  curTab=t;
+  document.querySelectorAll('.tbtn').forEach(function(b){b.classList.remove('active')});
+  document.getElementById('tab-'+t).classList.add('active');
+  if(Object.keys(drugData).length>0)render();else renderEmpty();
+}
+
+// QUERY
+async function runQ(){
+  var d1=document.getElementById('d1').value.trim().toLowerCase();
+  var d2=document.getElementById('d2').value.trim().toLowerCase();
+  if(!d1){ss('err','Enter at least one drug name.');return}
+  if(busy)return;
+  busy=true;
+  document.getElementById('runBtn').disabled=true;
+  document.querySelectorAll('.acl').forEach(function(l){l.classList.remove('open')});
+  var drugs=[d1,d2].filter(Boolean);
+  ss('l','Querying FDA for: '+drugs.join(', ')+'…');
+  renderLoad();
+  try{
+    var res=await Promise.all(drugs.map(fetchDrug));
+    drugData={};
+    drugs.forEach(function(n,i){if(res[i])drugData[n]=res[i]});
+    var ks=Object.keys(drugData);
+    if(!ks.length){ss('err','No data found. Try a generic name like "aspirin" or "metformin".');renderEmpty()}
+    else{ss('ok',ks.map(function(n){return n.toUpperCase()}).join(' + ')+' — '+ks.map(function(k){return fn(drugData[k].total)}).join(' / ')+' total reports');render()}
+  }catch(e){ss('err',e.message||'API error. Check your connection.');renderEmpty()}
+  finally{busy=false;document.getElementById('runBtn').disabled=false}
+}
+
+async function fetchDrug(name){
+  var s='patient.drug.medicinalproduct:"'+name+'"';
+  var all=await Promise.allSettled([
+    api('event',{search:s,limit:1}),
+    api('event',{search:s+'+AND+serious:1',limit:1}),
+    api('event',{search:s+'+AND+seriousnessdeath:1',limit:1}),
+    api('event',{search:s+'+AND+seriousnesshospitalization:1',limit:1}),
+    api('event',{search:s,count:'patient.reaction.reactionmeddrapt.exact',limit:20}),
+    api('event',{search:s,count:'patient.patientsex',limit:3}),
+    api('event',{search:s,count:'patient.reaction.reactionoutcome',limit:6}),
+    api('enforcement',{search:'product_description:"'+name+'"',limit:10,sort:'report_date:desc'}),
+    api('label',{search:'openfda.generic_name:"'+name+'"',limit:1}),
+  ]);
+  function v(r,d){return r.status==='fulfilled'?r.value:d}
+  function tot(r){return v(r,{})&&v(r,{}).meta?v(r,{}).meta.results.total:0}
+  function rs(r){return(v(r,{results:[]})||{results:[]}).results||[]}
+  return{name:name,total:tot(all[0]),serious:tot(all[1]),deaths:tot(all[2]),hospitalized:tot(all[3]),
+    reactions:rs(all[4]),sex:rs(all[5]),outcomes:rs(all[6]),recalls:rs(all[7]),label:rs(all[8])[0]||null};
+}
+
+// CLASS QUERY
+async function runCls(){
+  if(!selCls||actDrugs.length<2)return;
+  var btn=document.getElementById('clsBtn');
+  btn.disabled=true;
+  cs('l','Loading '+actDrugs.length+' drugs…');
+  document.getElementById('clsc').innerHTML='<div class="pgrid"><div class="panel full" style="display:flex;align-items:center;justify-content:center;gap:10px;min-height:180px"><div class="spin" style="width:16px;height:16px;border-width:2px"></div><span style="font-family:var(--font-mono);font-size:12px;color:var(--text3)">fetching '+actDrugs.length+' drugs…</span></div></div>';
+  try{
+    var res=await Promise.all(actDrugs.map(fetchDrug));
+    var cd={};
+    actDrugs.forEach(function(d,i){if(res[i])cd[d]=res[i]});
+    cs('ok',selCls.name+' — '+Object.keys(cd).length+' drugs loaded');
+    renderCls(cd);
+  }catch(e){cs('err',e.message)}
+  finally{btn.disabled=false}
+}
+
+function renderCls(data){
+  var ks=Object.keys(data).sort(function(a,b){return data[b].total-data[a].total});
+  var sR=ks.map(function(k){return pct(data[k].serious,data[k].total)});
+  var dR=ks.map(function(k){return pct(data[k].deaths,data[k].total)});
+  var minS=Math.min.apply(null,sR),maxS=Math.max.apply(null,sR);
+  var minD=Math.min.apply(null,dR),maxD=Math.max.apply(null,dR);
+
+  var cards='<div class="ccg">';
+  ks.forEach(function(k,i){
+    var d=data[k],sp=pct(d.serious,d.total);
+    cards+='<div class="cdr"><div class="rnk'+(i===0?' r1':'')+"\">#"+(i+1)+'</div>'
+      +'<div class="cdname">'+k.toUpperCase()+'</div>'
+      +'<div class="cdtot">'+fn(d.total)+'</div><div class="cdlab">total reports</div>'
+      +'<div style="margin-top:.6rem"><div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:3px">serious rate</div>'
+      +'<div class="bt"><div class="bf p" style="width:'+Math.min(sp,100)+'%"></div></div>'
+      +'<div style="font-family:var(--font-mono);font-size:11px;margin-top:3px;color:'+(sp>=50?'var(--red)':sp>=25?'var(--amber)':'var(--green)')+'">'+sp+'%</div></div></div>';
+  });
+  cards+='</div>';
+
+  var rows='';
+  ks.forEach(function(k,i){
+    var d=data[k],sp=pct(d.serious,d.total),dp=pct(d.deaths,d.total),hp=pct(d.hospitalized,d.total);
+    var rx=d.reactions[0]?d.reactions[0].term.toLowerCase():'—';
+    rows+='<tr><td class="dc"><span class="crn">'+(i+1)+'.</span>'+k+'</td>'
+      +'<td>'+fn(d.total)+'</td>'
+      +'<td class="'+(sp===minS?'cbest':sp===maxS?'cworst':'')+'">'+sp+'%</td>'
+      +'<td class="'+(dp===minD?'cbest':dp===maxD?'cworst':'')+'">'+dp+'%</td>'
+      +'<td>'+hp+'%</td>'
+      +'<td style="color:var(--text3);font-size:10px">'+rx+'</td></tr>';
+  });
+
+  var rxcols='';
+  ks.forEach(function(k){
+    var d=data[k],mx=d.reactions[0]?d.reactions[0].count:1;
+    rxcols+='<div><div style="font-family:var(--font-mono);font-size:11px;color:var(--purple);margin-bottom:6px">'+k.toUpperCase()+'</div>';
+    if(!d.reactions.length){rxcols+='<div class="nd">No data</div>'}
+    else d.reactions.slice(0,5).forEach(function(r){
+      rxcols+='<div class="br"><div class="bm"><span class="bn" style="font-size:10px">'+r.term.toLowerCase()+'</span><span class="bc">'+fn(r.count)+'</span></div>'
+        +'<div class="bt"><div class="bf p" style="width:'+Math.round(r.count/mx*100)+'%"></div></div></div>';
+    });
+    rxcols+='</div>';
+  });
+
+  document.getElementById('clsc').innerHTML=
+    '<div class="pgrid">'
+    +'<div class="panel full" style="min-height:auto"><div class="ph"><div class="pname pu">'+selCls.name+' — Class Overview</div><div class="psub">'+ks.length+' drugs</div></div>'+cards+'</div>'
+    +'<div class="panel full" style="min-height:auto"><div class="ph"><div class="pname pu">Safety Leaderboard</div><div class="psub"><span style="color:var(--green)">■</span> best &nbsp;<span style="color:var(--red)">■</span> worst</div></div>'
+    +'<table class="clt"><thead><tr><th>Drug</th><th>Total Reports</th><th>Serious Rate</th><th>Death Rate</th><th>Hospitalized</th><th>Top Reaction</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div class="inote">⚠ Rankings reflect adverse event reporting rates, not proven safety differences. Use this as an exploratory tool only.</div></div>'
+    +'<div class="panel full" style="min-height:auto"><div class="ph"><div class="pname pu">Top Reactions by Drug</div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">'+rxcols+'</div></div>'
+    +'</div>';
+}
+
+// RENDER HELPERS
+function renderLoad(){document.getElementById('mc').innerHTML='<div class="pgrid"><div class="panel full" style="display:flex;align-items:center;justify-content:center;gap:10px;min-height:180px"><div class="spin" style="width:16px;height:16px;border-width:2px"></div><span style="font-family:var(--font-mono);font-size:12px;color:var(--text3)">fetching from api.fda.gov…</span></div></div>'}
+function renderEmpty(){document.getElementById('mc').innerHTML='<div class="pgrid"><div class="panel full"><div class="empty"><div class="ei">⬡</div><div class="et">awaiting query…</div></div></div></div>'}
+function render(){
+  if(curTab==='overview')rOverview();
+  else if(curTab==='reactions')rReactions();
+  else if(curTab==='outcomes')rOutcomes();
+  else if(curTab==='demographics')rDemo();
+  else if(curTab==='recalls')rRecalls();
+  else if(curTab==='label')rLabel();
+  else if(curTab==='coadmin')rCoadmin();
+}
+function brow(lbl,cnt,tot,col){
+  var p=pct(cnt,tot),w=Math.min(p*2,100);
+  return'<div class="br"><div class="bm"><span class="bn">'+lbl+'</span><span class="bc">'+fn(cnt)+' ('+p+'%)</span></div><div class="bt"><div class="bf '+col+'" style="width:'+w+'%"></div></div></div>';
+}
+
+// OVERVIEW
+function rOverview(){
+  var ks=Object.keys(drugData),h='<div class="pgrid">';
+  ks.forEach(function(k){
+    var d=drugData[k],sp=pct(d.serious,d.total),dp=pct(d.deaths,d.total);
+    h+='<div class="panel"><div class="ph"><div class="pname">'+d.name.toUpperCase()+'</div>'
+      +'<span class="hi" onclick="openM(\'m-faers\')">?</span><div class="psub">FAERS Overview</div></div>'
+      +(d.total===0?'<div class="emsg">No data for "'+d.name+'". Try the generic name.</div>':'')
+      +'<div class="mrow">'
+      +'<div class="met"><div class="mv cb">'+fn(d.total)+'</div><div class="ml">Total Reports</div></div>'
+      +'<div class="met"><div class="mv '+(sp>=50?'cr':sp>=25?'ca':'cg')+'">'+sp+'%</div><div class="ml">Serious Rate</div></div>'
+      +'<div class="met"><div class="mv '+(dp>5?'cr':dp>1?'ca':'cg')+'">'+dp+'%</div><div class="ml">Death Rate</div></div>'
+      +'</div>'
+      +'<div class="sec">Severity breakdown <span class="hi" onclick="openM(\'m-faers\')" style="margin-left:2px">?</span></div>'
+      +brow('Hospitalized',d.hospitalized,d.total,'a')
+      +brow('Deaths',d.deaths,d.total,'r')
+      +brow('All Serious',d.serious,d.total,'')
+      +'<div class="sec">Most reported reactions <span class="hi" onclick="openM(\'m-reactions\')" style="margin-left:2px">?</span></div>'
+      +'<div class="pgf">'
+      +(d.reactions.slice(0,8).map(function(r){return'<div class="pill">'+r.term.toLowerCase()+' <span class="pilln">'+fn(r.count)+'</span></div>'}).join('')||'<span class="nd">No reaction data</span>')
+      +'</div></div>';
+  });
+  if(ks.length===2){
+    var a=drugData[ks[0]],b=drugData[ks[1]];
+    var rows=[
+      {l:'Total reports',va:fn(a.total),vb:fn(b.total),bt:null},
+      {l:'Serious events',va:fn(a.serious),vb:fn(b.serious),bt:a.serious<=b.serious?'a':'b'},
+      {l:'Serious rate',va:pct(a.serious,a.total)+'%',vb:pct(b.serious,b.total)+'%',bt:pct(a.serious,a.total)<=pct(b.serious,b.total)?'a':'b'},
+      {l:'Death rate',va:pct(a.deaths,a.total)+'%',vb:pct(b.deaths,b.total)+'%',bt:pct(a.deaths,a.total)<=pct(b.deaths,b.total)?'a':'b'},
+      {l:'Hospitalization rate',va:pct(a.hospitalized,a.total)+'%',vb:pct(b.hospitalized,b.total)+'%',bt:pct(a.hospitalized,a.total)<=pct(b.hospitalized,b.total)?'a':'b'},
+      {l:'Recall count',va:a.recalls.length,vb:b.recalls.length,bt:a.recalls.length<=b.recalls.length?'a':'b'},
+    ];
+    h+='<div class="panel full"><div class="ph"><div class="pname">// Comparative Analysis</div><div class="psub">'+a.name.toUpperCase()+' vs '+b.name.toUpperCase()+'</div></div>'
+      +'<table class="ctbl"><thead><tr><th>Metric</th><th>'+a.name.toUpperCase()+'</th><th>'+b.name.toUpperCase()+'</th></tr></thead><tbody>'
+      +rows.map(function(r){
+        return'<tr><td class="rl">'+r.l+'</td>'
+          +'<td class="'+(r.bt===null?'vn':r.bt==='a'?'vb':'vw')+'">'+r.va+'</td>'
+          +'<td class="'+(r.bt===null?'vn':r.bt==='b'?'vb':'vw')+'">'+r.vb+'</td></tr>';
+      }).join('')
+      +'</tbody></table>'
+      +'<div class="inote">↑ Green = lower (fewer adverse events). Higher total reports often just means more widely prescribed. <button class="lnk" onclick="openM(\'m-faers\')">Learn more →</button></div></div>';
+  }
+  h+='</div>';
+  document.getElementById('mc').innerHTML=h;
+}
+
+// REACTIONS
+function rReactions(){
+  var ks=Object.keys(drugData),h='<div class="pgrid">';
+  ks.forEach(function(k){
+    var d=drugData[k],mx=d.reactions[0]?d.reactions[0].count:1;
+    h+='<div class="panel"><div class="ph"><div class="pname">'+d.name.toUpperCase()+'</div><span class="hi" onclick="openM(\'m-reactions\')">?</span><div class="psub">Top 20 Reactions</div></div>'
+      +(d.reactions.length===0?'<div class="nd">No reaction data.</div>':'')
+      +d.reactions.map(function(r,i){
+        return'<div class="br"><div class="bm"><span class="bn">'+r.term.toLowerCase()+'</span><span class="bc">'+fn(r.count)+'</span></div><div class="bt"><div class="bf '+(i<3?'a':'')+'" style="width:'+Math.round(r.count/mx*100)+'%"></div></div></div>';
+      }).join('')
+      +'</div>';
+  });
+  h+='</div>';
+  document.getElementById('mc').innerHTML=h;
+}
+
+// OUTCOMES
+var oM={'1':'Recovered','2':'Recovering','3':'Not Recovered','4':'Fatal','5':'Unknown','6':'N/A'};
+var oC={'1':'#00e87a','2':'#4da6ff','3':'#f5a623','4':'#ff4d4d','5':'#4a5a6a','6':'#27333f'};
+function rOutcomes(){
+  var ks=Object.keys(drugData),h='<div class="pgrid">';
+  ks.forEach(function(k){
+    var d=drugData[k],s=d.outcomes.slice().sort(function(a,b){return b.count-a.count}),tot=s.reduce(function(x,o){return x+o.count},0)||1;
+    h+='<div class="panel"><div class="ph"><div class="pname">'+d.name.toUpperCase()+'</div><span class="hi" onclick="openM(\'m-outcomes\')">?</span><div class="psub">Outcomes</div></div>'
+      +(s.length===0?'<div class="nd">No outcome data.</div>':'')
+      +'<div class="ocg">'
+      +s.map(function(o){var hh=Math.max(3,Math.round(o.count/tot*50)),col=oC[o.term]||'#888';return'<div class="occ"><div class="ocb" style="height:'+hh+'px;background:'+col+'25;border-top:2px solid '+col+'"></div><div class="ocl">'+(oM[o.term]||o.term)+'</div></div>'}).join('')
+      +'</div><div class="sec">Breakdown</div>'
+      +s.map(function(o){var p=pct(o.count,tot),col=oC[o.term]||'#888';return'<div class="br"><div class="bm"><span class="bn">'+(oM[o.term]||o.term)+'</span><span class="bc">'+p+'%</span></div><div class="bt"><div class="bf" style="width:'+p+'%;background:'+col+'"></div></div></div>'}).join('')
+      +'</div>';
+  });
+  h+='</div>';
+  document.getElementById('mc').innerHTML=h;
+}
+
+// DEMOGRAPHICS
+function rDemo(){
+  var ks=Object.keys(drugData),h='<div class="pgrid">';
+  ks.forEach(function(k){
+    var d=drugData[k],tot=d.sex.reduce(function(x,o){return x+o.count},0)||1;
+    var m=0,f=0,u=0;
+    d.sex.forEach(function(s){if(s.term==='1')m=s.count;else if(s.term==='2')f=s.count;else u+=s.count});
+    var mp=pct(m,tot),fp=pct(f,tot),up=pct(u,tot);
+    h+='<div class="panel"><div class="ph"><div class="pname">'+d.name.toUpperCase()+'</div><div class="psub">Demographics</div></div>'
+      +'<div class="sec">Sex distribution</div>'
+      +'<div class="sexbar"><div class="sm" style="width:'+mp+'%"></div><div class="sf" style="width:'+fp+'%"></div><div class="su" style="width:'+up+'%"></div></div>'
+      +'<div class="sleg">'
+      +'<div class="sli"><div class="sw" style="background:var(--blue)"></div>Male '+mp+'%</div>'
+      +'<div class="sli"><div class="sw" style="background:#ff7eb3"></div>Female '+fp+'%</div>'
+      +'<div class="sli"><div class="sw" style="background:var(--border2)"></div>Unknown '+up+'%</div>'
+      +'</div>'
+      +'<div class="mrow" style="margin-top:1rem">'
+      +'<div class="met"><div class="mv cb">'+fn(m)+'</div><div class="ml">Male Reports</div></div>'
+      +'<div class="met"><div class="mv" style="color:#ff7eb3">'+fn(f)+'</div><div class="ml">Female Reports</div></div>'
+      +'<div class="met"><div class="mv">'+fn(u)+'</div><div class="ml">Unknown Sex</div></div>'
+      +'</div>'
+      +'<div class="inote">⚠ Sex ratios reflect who submitted reports, not population-level risk. Women are historically over-represented in voluntary reporting.</div>'
+      +'</div>';
+  });
+  h+='</div>';
+  document.getElementById('mc').innerHTML=h;
+}
+
+// RECALLS
+function rCls(r){var c=(r.classification||'').toLowerCase();return c.includes('class i')&&!c.includes('ii')?'c1':c.includes('class ii')&&!c.includes('iii')?'c2':'c3'}
+function rBadge(r){var c=(r.classification||'').toLowerCase();return c.includes('class i')&&!c.includes('ii')?'b1':c.includes('class ii')&&!c.includes('iii')?'b2':'b3'}
+function rRecalls(){
+  var ks=Object.keys(drugData),h='<div class="pgrid">';
+  ks.forEach(function(k){
+    var d=drugData[k];
+    h+='<div class="panel"><div class="ph"><div class="pname">'+d.name.toUpperCase()+'</div><span class="hi" onclick="openM(\'m-recalls\')">?</span><div class="psub">'+d.recalls.length+' Recalls</div></div>'
+      +(d.recalls.length===0?'<div class="nd">No recall records found. This may mean no recent recalls, or the drug name differs in the enforcement database.</div>':'')
+      +'<div class="rcl">'
+      +d.recalls.map(function(r){
+        return'<div class="rc '+rCls(r)+'"><div class="rt">'
+          +'<span class="rb '+rBadge(r)+'">'+(r.classification||'N/A')+'</span>'
+          +'<span class="rprod">'+tr(r.product_description||r.recalling_firm||'Unknown',80)+'</span>'
+          +'<span class="rdate">'+fd(r.recall_initiation_date)+'</span>'
+          +'</div><div class="rreason">'+tr(r.reason_for_recall||'No reason provided',200)+'</div>'
+          +'<div class="rco">'+(r.recalling_firm||'')+(r.status?' · '+r.status:'')+'</div></div>';
+      }).join('')
+      +'</div></div>';
+  });
+  h+='<div class="panel full" style="min-height:auto"><div class="ph"><div class="pname">Recall Classification Key</div><span class="hi" onclick="openM(\'m-recalls\')">?</span></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">'
+    +'<div style="background:var(--red-bg);border:1px solid rgba(255,77,77,.2);border-radius:4px;padding:.75rem"><div style="color:var(--red);font-family:var(--font-mono);font-size:11px;margin-bottom:5px">CLASS I</div><div style="color:var(--text2);font-size:11px;line-height:1.5">Reasonable probability of serious harm or death.</div></div>'
+    +'<div style="background:var(--amber-bg);border:1px solid rgba(245,166,35,.2);border-radius:4px;padding:.75rem"><div style="color:var(--amber);font-family:var(--font-mono);font-size:11px;margin-bottom:5px">CLASS II</div><div style="color:var(--text2);font-size:11px;line-height:1.5">May cause temporary adverse health consequences.</div></div>'
+    +'<div style="background:var(--blue-bg);border:1px solid rgba(77,166,255,.2);border-radius:4px;padding:.75rem"><div style="color:var(--blue);font-family:var(--font-mono);font-size:11px;margin-bottom:5px">CLASS III</div><div style="color:var(--text2);font-size:11px;line-height:1.5">Unlikely to cause health consequences but violates FDA regulations.</div></div>'
+    +'</div></div>';
+  h+='</div>';
+  document.getElementById('mc').innerHTML=h;
+}
+
+// LABEL
+function rLabel(){
+  var ks=Object.keys(drugData),h='<div class="pgrid">';
+  ks.forEach(function(k){
+    var d=drugData[k],L=d.label;
+    if(!L){h+='<div class="panel"><div class="ph"><div class="pname">'+d.name.toUpperCase()+'</div><span class="hi" onclick="openM(\'m-label\')">?</span></div><div class="nd">No label data found. Try the exact generic name.</div></div>';return}
+    var secs=[
+      {t:'Warnings',c:L.warnings&&L.warnings[0]||L.warnings_and_cautions&&L.warnings_and_cautions[0]},
+      {t:'Indications & Usage',c:L.indications_and_usage&&L.indications_and_usage[0]},
+      {t:'Contraindications',c:L.contraindications&&L.contraindications[0]},
+      {t:'Adverse Reactions',c:L.adverse_reactions&&L.adverse_reactions[0]},
+      {t:'Drug Interactions',c:L.drug_interactions&&L.drug_interactions[0]},
+    ].filter(function(s){return s.c});
+    h+='<div class="panel"><div class="ph">'
+      +'<div class="pname">'+(L.openfda&&L.openfda.generic_name&&L.openfda.generic_name[0]||d.name).toUpperCase()+'</div>'
+      +'<span class="hi" onclick="openM(\'m-label\')">?</span>'
+      +'<div class="psub">'+(L.openfda&&L.openfda.brand_name&&L.openfda.brand_name[0]||'')+'</div></div>'
+      +(L.openfda&&L.openfda.manufacturer_name&&L.openfda.manufacturer_name[0]?'<div style="font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-bottom:.75rem">Manufacturer: '+L.openfda.manufacturer_name[0]+'</div>':'')
+      +(secs.length===0?'<div class="nd">Label fields not available.</div>':'')
+      +secs.map(function(s){return'<div class="ls"><div class="lst">// '+s.t+'</div><div class="lsc">'+s.c.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()+'</div></div>'}).join('')
+      +'</div>';
+  });
+  h+='</div>';
+  document.getElementById('mc').innerHTML=h;
+}
+
+// CO-ADMIN
+async function rCoadmin(){
+  var ks=Object.keys(drugData);
+  if(ks.length<2){document.getElementById('mc').innerHTML='<div class="pgrid"><div class="panel full"><div class="empty"><div class="ei">⬡</div><div class="et">Enter two drugs to analyze co-administration</div></div></div></div>';return}
+  var a=ks[0],b=ks[1];
+  document.getElementById('mc').innerHTML='<div class="pgrid"><div class="panel full" style="display:flex;align-items:center;justify-content:center;gap:10px;min-height:180px"><div class="spin" style="width:16px;height:16px;border-width:2px"></div><span style="font-family:var(--font-mono);font-size:12px;color:var(--text3)">querying co-administration reports…</span></div></div>';
+  try{
+    var s='patient.drug.medicinalproduct:"'+a+'"+AND+patient.drug.medicinalproduct:"'+b+'"';
+    var all=await Promise.all([
+      api('event',{search:s,limit:1}),
+      api('event',{search:s+'+AND+serious:1',limit:1}),
+      api('event',{search:s+'+AND+seriousnessdeath:1',limit:1}),
+      api('event',{search:s,count:'patient.reaction.reactionmeddrapt.exact',limit:15}).catch(function(){return{results:[]}}),
+    ]);
+    var total=all[0]&&all[0].meta?all[0].meta.results.total:0;
+    var serious=all[1]&&all[1].meta?all[1].meta.results.total:0;
+    var deaths=all[2]&&all[2].meta?all[2].meta.results.total:0;
+    var rxs=(all[3]&&all[3].results)||[],mx=rxs[0]?rxs[0].count:1;
+    var da=drugData[a],db=drugData[b];
+    document.getElementById('mc').innerHTML='<div class="pgrid"><div class="panel full">'
+      +'<div class="ph"><div class="pname">Co-Administration Analysis</div><span class="hi" onclick="openM(\'m-coadmin\')">?</span><div class="psub">'+a.toUpperCase()+' + '+b.toUpperCase()+'</div></div>'
+      +'<div class="mrow" style="grid-template-columns:repeat(4,1fr)">'
+      +'<div class="met"><div class="mv ca">'+fn(total)+'</div><div class="ml">Reports with Both</div></div>'
+      +'<div class="met"><div class="mv">'+pct(total,Math.min(da.total,db.total))+'%</div><div class="ml">of Smaller Drug\'s Reports</div></div>'
+      +'<div class="met"><div class="mv '+(pct(serious,total)>50?'cr':'ca')+'">'+pct(serious,total)+'%</div><div class="ml">Serious Rate</div></div>'
+      +'<div class="met"><div class="mv '+(pct(deaths,total)>5?'cr':'cg')+'">'+pct(deaths,total)+'%</div><div class="ml">Death Rate</div></div>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--text3);font-family:var(--font-mono);line-height:1.6;margin-bottom:.75rem">'
+      +'Out of '+fn(da.total)+' '+a+' reports and '+fn(db.total)+' '+b+' reports, '+fn(total)+' ('+pct(total,da.total)+'% of '+a+' reports) mention both drugs together.'+(serious>0?' '+pct(serious,total)+'% were serious.':'')
+      +'</div>'
+      +(rxs.length?'<div class="sec">Top reactions when both drugs present</div>'
+        +rxs.map(function(r,i){return'<div class="br"><div class="bm"><span class="bn">'+r.term.toLowerCase()+'</span><span class="bc">'+fn(r.count)+'</span></div><div class="bt"><div class="bf '+(i<3?'a':'')+'" style="width:'+Math.round(r.count/mx*100)+'%"></div></div></div>'}).join('')
+      :'')
+      +'<div class="inote">⚠ Co-admin reports don\'t establish causation. High counts may mean these drugs are commonly prescribed together. <button class="lnk" onclick="openM(\'m-coadmin\')">Learn more →</button></div>'
+      +'</div></div>';
+  }catch(e){
+    document.getElementById('mc').innerHTML='<div class="pgrid"><div class="panel full"><div class="emsg">Failed: '+e.message+'</div></div></div>';
+  }
+}
+
+// INIT
+buildCls();
+window.addEventListener('load',function(){loadEx('warfarin','ibuprofen')});
+</script>
+</body>
+</html>
