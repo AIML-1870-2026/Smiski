@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Switchboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e0d8;
+    --text: #1a1916;
+    --text-muted: #7a7870;
+    --accent: #2a6049;
+    --accent-light: #e8f0ec;
+    --accent2: #c45c2e;
+    --openai: #1a1916;
+    --anthropic: #c45c2e;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ─── Header ─── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.3rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; display: inline-block; }
+  .header-sub { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+
+  /* ─── Metrics Bar ─── */
+  .metrics-bar {
+    display: none;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 32px;
+    gap: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .metrics-bar.visible { display: flex; }
+  .metric-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .metric-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+  .metric-value { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--text); }
+  .metric-value.highlight { color: var(--accent); }
+  .metrics-divider { width: 1px; height: 28px; background: var(--border); }
+
+  /* ─── Layout ─── */
+  .layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 0;
+    height: calc(100vh - 60px);
+  }
+  .layout.metrics-open { height: calc(100vh - 100px); }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  /* ─── Key Tabs ─── */
+  .key-tabs {
+    display: flex;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+    margin-bottom: 10px;
+  }
+  .key-tab {
+    flex: 1; padding: 6px 10px; border: none; background: transparent;
+    border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 12px;
+    font-weight: 500; cursor: pointer; color: var(--text-muted); transition: all 0.15s;
+  }
+  .key-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .key-panel { display: none; }
+  .key-panel.active { display: block; }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border); border-radius: var(--radius);
+    padding: 18px 14px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--surface2);
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-light); }
+  .drop-icon { font-size: 20px; margin-bottom: 4px; }
+  .drop-text { font-size: 12px; color: var(--text-muted); }
+  .drop-text strong { color: var(--accent); }
+  #file-input { display: none; }
+
+  .key-status { margin-top: 8px; font-size: 11px; padding: 6px 10px; border-radius: 6px; display: none; }
+  .key-status.ok { background: var(--accent-light); color: var(--accent); display: block; }
+  .key-status.err { background: #fdecea; color: #c0392b; display: block; }
+
+  .paste-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .paste-group label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .paste-input {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'DM Mono', monospace; font-size: 12px; background: var(--surface2);
+    color: var(--text); outline: none; transition: border-color 0.15s;
+  }
+  .paste-input:focus { border-color: var(--accent); }
+
+  .privacy-note {
+    font-size: 11px; color: var(--text-muted); margin-top: 6px;
+    display: flex; gap: 5px; align-items: flex-start;
+  }
+  .privacy-note::before { content: '🔒'; font-size: 10px; margin-top: 1px; flex-shrink: 0; }
+
+  /* ─── Provider ─── */
+  .provider-toggle { display: flex; gap: 8px; }
+  .provider-btn {
+    flex: 1; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 10px;
+    background: var(--surface2); font-family: 'DM Sans', sans-serif; font-size: 13px;
+    font-weight: 500; cursor: pointer; transition: all 0.2s; color: var(--text-muted); text-align: center;
+  }
+  .provider-btn.active[data-provider="openai"] { border-color: var(--openai); background: #1a1916; color: #fff; }
+  .provider-btn.active[data-provider="anthropic"] { border-color: var(--anthropic); background: #c45c2e; color: #fff; }
+  .provider-btn:not(.active):hover { border-color: #bbb; }
+
+  .cors-notice {
+    display: none; margin-top: 8px; padding: 10px 12px;
+    background: #fff8f0; border: 1px solid #f0d0b0; border-radius: 8px;
+    font-size: 12px; color: #8a5020; line-height: 1.5;
+  }
+  .cors-notice strong { color: #c45c2e; }
+
+  select {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--surface2);
+    color: var(--text); outline: none; cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a7870' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    margin-top: 8px; transition: border-color 0.15s;
+  }
+  select:focus { border-color: var(--accent); }
+
+  /* ─── Prompt Library ─── */
+  .library-panel {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .library-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; cursor: pointer; transition: background 0.15s;
+  }
+  .library-header:hover { background: var(--accent-light); }
+  .library-header-left { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+  .library-count {
+    font-size: 11px; font-weight: 600; background: var(--accent);
+    color: white; border-radius: 20px; padding: 1px 7px; min-width: 20px; text-align: center;
+  }
+  .library-chevron { font-size: 11px; color: var(--text-muted); transition: transform 0.2s; }
+  .library-panel.open .library-chevron { transform: rotate(180deg); }
+
+  .library-body { display: none; border-top: 1px solid var(--border); }
+  .library-panel.open .library-body { display: block; }
+
+  .library-save-row {
+    display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border);
+  }
+  .library-name-input {
+    flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 7px;
+    font-family: 'DM Sans', sans-serif; font-size: 12px; background: var(--surface);
+    color: var(--text); outline: none; transition: border-color 0.15s;
+  }
+  .library-name-input:focus { border-color: var(--accent); }
+  .library-name-input::placeholder { color: var(--text-muted); }
+
+  .lib-btn {
+    padding: 6px 12px; border: 1px solid var(--border); border-radius: 7px;
+    background: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 12px;
+    font-weight: 500; cursor: pointer; color: var(--text-muted); white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .lib-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .lib-btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .lib-btn.primary:hover { background: #1e4d38; }
+
+  .library-list { max-height: 200px; overflow-y: auto; }
+  .library-empty {
+    padding: 16px; text-align: center; font-size: 12px; color: var(--text-muted); font-style: italic;
+  }
+  .library-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .library-item:last-child { border-bottom: none; }
+  .library-item:hover { background: var(--accent-light); }
+  .library-item-name {
+    flex: 1; font-size: 12px; color: var(--text); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+  }
+  .library-item-name:hover { color: var(--accent); }
+  .library-item-del {
+    flex-shrink: 0; border: none; background: none; cursor: pointer;
+    color: var(--text-muted); font-size: 14px; padding: 2px 4px; border-radius: 4px;
+    transition: all 0.1s; line-height: 1;
+  }
+  .library-item-del:hover { background: #fdecea; color: #c0392b; }
+
+  /* ─── Output Mode ─── */
+  .mode-toggle {
+    display: flex; background: var(--surface2); border-radius: 8px; padding: 3px; gap: 2px;
+  }
+  .mode-btn {
+    flex: 1; padding: 7px 12px; border: none; background: transparent; border-radius: 6px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; color: var(--text-muted); transition: all 0.15s;
+  }
+  .mode-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  .schema-section { display: none; margin-top: 12px; }
+  .schema-section.visible { display: block; }
+
+  textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'DM Mono', monospace; font-size: 11.5px; line-height: 1.6;
+    background: var(--surface2); color: var(--text); resize: vertical; outline: none;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { border-color: var(--accent); }
+
+  .char-count { font-size: 11px; color: var(--text-muted); text-align: right; margin-top: 4px; }
+
+
+
+  /* ─── Send Button ─── */
+  .send-btn {
+    width: 100%; padding: 13px 20px; background: var(--text); color: #fff;
+    border: none; border-radius: var(--radius); font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 600; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;
+  }
+  .send-btn:hover:not(:disabled) { background: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(42,96,73,0.25); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .send-btn .spinner {
+    width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .send-btn.loading .spinner { display: block; }
+  .send-btn.loading .btn-text { display: none; }
+
+  /* ─── Response Panel ─── */
+  .response-panel {
+    overflow-y: auto; padding: 28px 36px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  .response-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; min-height: 300px; text-align: center; color: var(--text-muted);
+  }
+  .response-empty-icon { font-size: 40px; margin-bottom: 14px; opacity: 0.4; }
+  .response-empty h3 {
+    font-family: 'DM Serif Display', serif; font-size: 1.3rem; margin-bottom: 6px;
+    font-weight: 400; color: var(--text); opacity: 0.5;
+  }
+  .response-empty p { font-size: 13px; opacity: 0.6; }
+
+  /* ─── Response Card ─── */
+  .response-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; box-shadow: var(--shadow);
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .response-meta {
+    padding: 12px 18px; border-bottom: 1px solid var(--border);
+    background: var(--surface2); display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  .response-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; letter-spacing: 0.03em; }
+  .badge-provider-openai { background: #1a1916; color: #fff; }
+  .badge-provider-anthropic { background: #c45c2e; color: #fff; }
+  .badge-mode { background: var(--accent-light); color: var(--accent); }
+  .badge-model { background: var(--border); color: var(--text-muted); font-weight: 500; }
+
+  .response-stat { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+  .response-stats { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+  /* ─── Expandable Body ─── */
+  .response-body-wrapper { position: relative; }
+  .response-body {
+    padding: 20px; font-size: 14px; line-height: 1.75;
+    white-space: pre-wrap; word-break: break-word;
+    max-height: 320px; overflow: hidden; transition: max-height 0.3s ease;
+  }
+  .response-body.expanded { max-height: none; }
+  .response-body.json { font-family: 'DM Mono', monospace; font-size: 12px; background: #fafaf8; }
+  .response-body.error { color: #c0392b; background: #fdecea; font-size: 13px; }
+
+  .expand-fade {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
+    background: linear-gradient(transparent, white); pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .response-body.json ~ .expand-fade { background: linear-gradient(transparent, #fafaf8); }
+  .response-body.expanded ~ .expand-fade { opacity: 0; }
+
+  .expand-btn {
+    width: 100%; padding: 8px; border: none; border-top: 1px solid var(--border);
+    background: var(--surface2); font-family: 'DM Sans', sans-serif; font-size: 12px;
+    font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+  }
+  .expand-btn:hover { color: var(--accent); background: var(--accent-light); }
+  .expand-btn.hidden { display: none; }
+
+  /* JSON syntax */
+  .json-key { color: var(--accent); font-weight: 500; }
+  .json-string { color: #8b4513; }
+  .json-number { color: #2874a6; }
+  .json-bool { color: #8e44ad; }
+  .json-null { color: var(--text-muted); }
+
+  hr.divider { border: none; border-top: 1px solid var(--border); }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
+    .sbs-container { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="logo-dot"></span>LLM Switchboard</div>
+  <span class="header-sub">Compare OpenAI &amp; Anthropic models</span>
+</header>
+
+<!-- Metrics Bar -->
+<div class="metrics-bar" id="metrics-bar">
+  <div class="metric-item">
+    <span class="metric-label">Last Response</span>
+    <span class="metric-value highlight" id="metric-time">—</span>
+  </div>
+  <div class="metrics-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Tokens Used</span>
+    <span class="metric-value" id="metric-tokens">—</span>
+  </div>
+  <div class="metrics-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Response Length</span>
+    <span class="metric-value" id="metric-length">—</span>
+  </div>
+  <div class="metrics-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Total Requests</span>
+    <span class="metric-value" id="metric-requests">0</span>
+  </div>
+  <div class="metrics-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Avg Response Time</span>
+    <span class="metric-value" id="metric-avg">—</span>
+  </div>
+</div>
+
+<div class="layout" id="main-layout">
+  <!-- ─── Sidebar ─── -->
+  <aside class="sidebar">
+
+    <!-- API Keys -->
+    <div>
+      <div class="section-label">API Key Setup</div>
+      <div class="key-tabs">
+        <button class="key-tab active" onclick="switchKeyTab('file')">📂 File Upload</button>
+        <button class="key-tab" onclick="switchKeyTab('paste')">✏️ Paste Keys</button>
+      </div>
+      <div class="key-panel active" id="panel-file">
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <div class="drop-icon">📄</div>
+          <div class="drop-text">Drop your <strong>.env or .csv</strong> file<br>or <strong>click to browse</strong></div>
+        </div>
+        <input type="file" id="file-input" accept=".env,.csv,.txt" onchange="handleFileSelect(event)">
+        <div class="key-status" id="file-status"></div>
+      </div>
+      <div class="key-panel" id="panel-paste">
+        <div class="paste-group">
+          <label>OpenAI API Key</label>
+          <input type="password" class="paste-input" id="paste-openai" placeholder="sk-..." oninput="handlePasteKey()">
+        </div>
+        <div class="paste-group">
+          <label>Anthropic API Key</label>
+          <input type="password" class="paste-input" id="paste-anthropic" placeholder="sk-ant-..." oninput="handlePasteKey()">
+        </div>
+        <div class="key-status" id="paste-status"></div>
+      </div>
+      <div class="privacy-note">Keys held in memory only — never stored or transmitted except directly to model APIs.</div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Provider & Model -->
+    <div>
+      <div class="section-label">Provider &amp; Model</div>
+      <div class="provider-toggle">
+        <button class="provider-btn active" data-provider="openai" onclick="selectProvider('openai')">OpenAI</button>
+        <button class="provider-btn" data-provider="anthropic" onclick="selectProvider('anthropic')">Anthropic</button>
+      </div>
+      <div class="cors-notice" id="cors-notice">
+        <strong>⚠️ Browser CORS Restriction</strong><br>
+        Anthropic's API blocks direct browser requests by design. Expect a network error — this is normal and educational. A real app would use a backend proxy.
+      </div>
+      <select id="model-select"></select>
+    </div>
+
+    <hr class="divider">
+
+    <!-- 🔥 Prompt Library -->
+    <div>
+      <div class="section-label">🔥 Prompt Library</div>
+      <div class="library-panel" id="library-panel">
+        <div class="library-header" onclick="toggleLibrary()">
+          <div class="library-header-left">
+            📚 Saved Prompts
+            <span class="library-count" id="library-count">0</span>
+          </div>
+          <span class="library-chevron">▼</span>
+        </div>
+        <div class="library-body">
+          <div class="library-save-row">
+            <input class="library-name-input" id="library-name-input" placeholder="Name this prompt (optional)…">
+            <button class="lib-btn primary" onclick="savePrompt()">💾 Save</button>
+          </div>
+          <div class="library-list" id="library-list">
+            <div class="library-empty" id="library-empty">No saved prompts yet.<br>Type a prompt and hit Save.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Output Mode -->
+    <div>
+      <div class="section-label">Output Mode</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" onclick="selectMode('unstructured')">¶ Unstructured</button>
+        <button class="mode-btn" onclick="selectMode('structured')">{ } Structured</button>
+      </div>
+      <div class="schema-section" id="schema-section">
+        <div class="section-label" style="margin-top:12px">JSON Schema Template</div>
+        <select id="schema-template" onchange="loadSchemaTemplate()">
+          <option value="">— Choose a template —</option>
+          <option value="species">🌿 Species Profile</option>
+          <option value="ecosystem">🌍 Ecosystem Summary</option>
+          <option value="phenomenon">⚡ Natural Phenomenon</option>
+          <option value="sentiment">💬 Sentiment Analysis</option>
+          <option value="summary">📋 Structured Summary</option>
+        </select>
+        <textarea id="schema-editor" rows="7" style="margin-top:8px" placeholder='{"type":"object","properties":{...}}'></textarea>
+        <div class="char-count" id="schema-chars">0 characters</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Prompt -->
+    <div>
+      <div class="section-label">Prompt</div>
+      <select id="example-select" onchange="loadExamplePrompt()">
+        <option value="">— Load an example prompt —</option>
+        <optgroup label="🌿 Science &amp; Nature">
+          <option value="wolf_reintro">Wolf reintroduction in Yellowstone</option>
+          <option value="mycelium">Mycelium network communication</option>
+          <option value="bioluminescence">Deep-sea bioluminescence</option>
+          <option value="migration">Monarch butterfly navigation</option>
+        </optgroup>
+        <optgroup label="🤖 General AI Demos">
+          <option value="explain_ml">Explain ML to a 12-year-old</option>
+          <option value="pros_cons">Pros &amp; cons of renewable energy</option>
+          <option value="summarize">History of the internet (3 sentences)</option>
+          <option value="haiku">Haiku about artificial intelligence</option>
+        </optgroup>
+      </select>
+      <textarea class="prompt-area" id="prompt-input" rows="5" style="margin-top:8px" placeholder="Enter your prompt here, or load an example above..." oninput="updateCharCount()"></textarea>
+      <div class="char-count" id="prompt-chars">0 characters</div>
+    </div>
+
+    <button class="send-btn" id="send-btn" onclick="sendPrompt()">
+      <div class="spinner"></div>
+      <span class="btn-text">↑ Send Prompt</span>
+    </button>
+
+  </aside>
+
+  <!-- ─── Response Panel ─── -->
+  <main class="response-panel" id="response-panel">
+    <div class="response-empty" id="response-empty">
+      <div class="response-empty-icon">🔬</div>
+      <h3>Ready to explore</h3>
+      <p>Configure your settings, enter a prompt, and send.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+// ─── State ───
+const state = {
+  keys: { openai: null, anthropic: null },
+  provider: 'openai',
+  model: '',
+  mode: 'unstructured',
+  promptLibrary: [],
+  metrics: { requests: 0, totalTime: 0 },
+};
+
+const MODELS = {
+  openai: [
+    { id: 'gpt-4o', label: 'GPT-4o' },
+    { id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+    { id: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+    { id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+  ],
+  anthropic: [
+    { id: 'claude-opus-4-5', label: 'Claude Opus 4.5' },
+    { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
+  ],
+};
+
+const EXAMPLE_PROMPTS = {
+  wolf_reintro: "Explain the ecological effects of wolf reintroduction in Yellowstone National Park. How did it change the river systems?",
+  mycelium: "How do mycelium networks communicate between trees in a forest? What is the 'Wood Wide Web'?",
+  bioluminescence: "What causes bioluminescence in deep-sea creatures, and which species use it most remarkably?",
+  migration: "How do monarch butterflies navigate their 3,000-mile migration from Canada to Mexico using the sun and magnetic fields?",
+  explain_ml: "Explain machine learning to a curious 12-year-old using a fun analogy.",
+  pros_cons: "What are the key pros and cons of transitioning to 100% renewable energy by 2050?",
+  summarize: "Summarize the history of the internet from ARPANET to today in exactly 3 sentences.",
+  haiku: "Write a haiku about artificial intelligence and what it means for humanity.",
+};
+
+const SCHEMA_TEMPLATES = {
+  species: { type:"object", properties:{ common_name:{type:"string"}, scientific_name:{type:"string"}, habitat:{type:"string"}, diet:{type:"string"}, conservation_status:{type:"string"}, key_facts:{type:"array",items:{type:"string"}} }, required:["common_name","scientific_name","habitat","conservation_status"] },
+  ecosystem: { type:"object", properties:{ ecosystem_name:{type:"string"}, location:{type:"string"}, climate:{type:"string"}, keystone_species:{type:"array",items:{type:"string"}}, threats:{type:"array",items:{type:"string"}}, conservation_efforts:{type:"string"} } },
+  phenomenon: { type:"object", properties:{ name:{type:"string"}, description:{type:"string"}, cause:{type:"string"}, examples:{type:"array",items:{type:"string"}}, scientific_field:{type:"string"}, interesting_fact:{type:"string"} } },
+  sentiment: { type:"object", properties:{ sentiment:{type:"string",enum:["positive","neutral","negative"]}, confidence:{type:"number"}, key_themes:{type:"array",items:{type:"string"}}, summary:{type:"string"} } },
+  summary: { type:"object", properties:{ title:{type:"string"}, main_point:{type:"string"}, key_takeaways:{type:"array",items:{type:"string"}}, implications:{type:"string"}, confidence_level:{type:"string",enum:["low","medium","high"]} } },
+};
+
+// ─── Key Tab ───
+function switchKeyTab(tab) {
+  document.querySelectorAll('.key-tab').forEach((t, i) => t.classList.toggle('active', (i===0&&tab==='file')||(i===1&&tab==='paste')));
+  document.getElementById('panel-file').classList.toggle('active', tab==='file');
+  document.getElementById('panel-paste').classList.toggle('active', tab==='paste');
+}
+
+// ─── File Upload ───
+function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
+function handleDragLeave() { document.getElementById('drop-zone').classList.remove('dragover'); }
+function handleDrop(e) { e.preventDefault(); document.getElementById('drop-zone').classList.remove('dragover'); if(e.dataTransfer.files[0]) parseKeyFile(e.dataTransfer.files[0]); }
+function handleFileSelect(e) { if(e.target.files[0]) parseKeyFile(e.target.files[0]); }
+
+function parseKeyFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const found = [];
+    const envOAI = text.match(/OPENAI_API_KEY\s*=\s*([^\s\n]+)/i);
+    const envANT = text.match(/ANTHROPIC_API_KEY\s*=\s*([^\s\n]+)/i);
+    if (envOAI) { state.keys.openai = envOAI[1].trim(); found.push('OpenAI'); }
+    if (envANT) { state.keys.anthropic = envANT[1].trim(); found.push('Anthropic'); }
+    if (!envOAI && !envANT) {
+      text.split('\n').forEach(line => line.split(',').forEach(p => {
+        const val = p.trim().replace(/['"]/g,'');
+        if (val.startsWith('sk-ant-')) { state.keys.anthropic = val; found.push('Anthropic'); }
+        else if (val.startsWith('sk-')) { state.keys.openai = val; found.push('OpenAI'); }
+      }));
+    }
+    const status = document.getElementById('file-status');
+    if (found.length > 0) { status.className='key-status ok'; status.textContent=`✓ Loaded keys for: ${found.join(', ')}`; }
+    else { status.className='key-status err'; status.textContent='No API keys found. Expected OPENAI_API_KEY or ANTHROPIC_API_KEY.'; }
+  };
+  reader.readAsText(file);
+}
+
+function handlePasteKey() {
+  const oai = document.getElementById('paste-openai').value.trim();
+  const ant = document.getElementById('paste-anthropic').value.trim();
+  if (oai) state.keys.openai = oai;
+  if (ant) state.keys.anthropic = ant;
+  const found = [];
+  if (oai) found.push('OpenAI');
+  if (ant) found.push('Anthropic');
+  const status = document.getElementById('paste-status');
+  if (found.length > 0) { status.className='key-status ok'; status.textContent=`✓ Keys set for: ${found.join(', ')}`; }
+  else { status.style.display='none'; }
+}
+
+// ─── Provider ───
+function selectProvider(p) {
+  state.provider = p;
+  document.querySelectorAll('.provider-btn').forEach(b => b.classList.toggle('active', b.dataset.provider===p));
+  document.getElementById('cors-notice').style.display = p==='anthropic' ? 'block' : 'none';
+  populateModels();
+}
+
+function populateModels() {
+  const models = MODELS[state.provider];
+  const sel = document.getElementById('model-select');
+  sel.innerHTML = '<option value="">— Select —</option>';
+  models.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id; opt.textContent = m.label;
+    sel.appendChild(opt);
+  });
+  sel.onchange = () => { state.model = sel.value; };
+}
+populateModels();
+
+// ─── Prompt Library ───
+function toggleLibrary() {
+  document.getElementById('library-panel').classList.toggle('open');
+}
+
+function savePrompt() {
+  const prompt = document.getElementById('prompt-input').value.trim();
+  if (!prompt) { alert('Type a prompt first before saving.'); return; }
+  const nameInput = document.getElementById('library-name-input');
+  const name = nameInput.value.trim() || (prompt.length > 48 ? prompt.slice(0,48)+'…' : prompt);
+  state.promptLibrary.push({ name, text: prompt });
+  nameInput.value = '';
+  renderLibrary();
+  // Open panel if closed
+  if (!document.getElementById('library-panel').classList.contains('open')) toggleLibrary();
+  // Flash feedback
+  const btn = document.querySelector('.lib-btn.primary');
+  const orig = btn.textContent;
+  btn.textContent = '✅ Saved!';
+  setTimeout(() => btn.textContent = orig, 1500);
+}
+
+function renderLibrary() {
+  const list = document.getElementById('library-list');
+  const empty = document.getElementById('library-empty');
+  const count = document.getElementById('library-count');
+  count.textContent = state.promptLibrary.length;
+  if (state.promptLibrary.length === 0) {
+    empty.style.display = 'block';
+    // Remove all items
+    list.querySelectorAll('.library-item').forEach(el => el.remove());
+    return;
+  }
+  empty.style.display = 'none';
+  list.querySelectorAll('.library-item').forEach(el => el.remove());
+  state.promptLibrary.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'library-item';
+    const name = document.createElement('span');
+    name.className = 'library-item-name';
+    name.textContent = p.name;
+    name.title = p.text;
+    name.onclick = () => {
+      document.getElementById('prompt-input').value = p.text;
+      updateCharCount();
+    };
+    const del = document.createElement('button');
+    del.className = 'library-item-del';
+    del.textContent = '×';
+    del.title = 'Delete';
+    del.onclick = (e) => {
+      e.stopPropagation();
+      state.promptLibrary.splice(i, 1);
+      renderLibrary();
+    };
+    item.appendChild(name);
+    item.appendChild(del);
+    list.appendChild(item);
+  });
+}
+
+// ─── Output Mode ───
+function selectMode(m) {
+  state.mode = m;
+  document.querySelectorAll('.mode-btn').forEach((b,i) => b.classList.toggle('active',(i===0&&m==='unstructured')||(i===1&&m==='structured')));
+  document.getElementById('schema-section').classList.toggle('visible', m==='structured');
+}
+
+function loadSchemaTemplate() {
+  const val = document.getElementById('schema-template').value;
+  if (val && SCHEMA_TEMPLATES[val]) {
+    document.getElementById('schema-editor').value = JSON.stringify(SCHEMA_TEMPLATES[val], null, 2);
+    updateSchemaChars();
+  }
+}
+
+// ─── Example Prompts ───
+function loadExamplePrompt() {
+  const val = document.getElementById('example-select').value;
+  if (val && EXAMPLE_PROMPTS[val]) {
+    document.getElementById('prompt-input').value = EXAMPLE_PROMPTS[val];
+    updateCharCount();
+  }
+}
+
+// ─── Char Counts ───
+function updateCharCount() {
+  document.getElementById('prompt-chars').textContent = `${document.getElementById('prompt-input').value.length.toLocaleString()} characters`;
+}
+function updateSchemaChars() {
+  document.getElementById('schema-chars').textContent = `${document.getElementById('schema-editor').value.length.toLocaleString()} characters`;
+}
+document.getElementById('schema-editor').addEventListener('input', updateSchemaChars);
+
+// ─── Metrics ───
+function updateMetrics(elapsed, tokens, length) {
+  state.metrics.requests++;
+  state.metrics.totalTime += elapsed;
+  document.getElementById('metrics-bar').classList.add('visible');
+  document.getElementById('main-layout').classList.add('metrics-open');
+  document.getElementById('metric-time').textContent = `${elapsed.toFixed(2)}s`;
+  document.getElementById('metric-tokens').textContent = tokens ? tokens.toLocaleString() : 'N/A';
+  document.getElementById('metric-length').textContent = `${length.toLocaleString()} chars`;
+  document.getElementById('metric-requests').textContent = state.metrics.requests;
+  document.getElementById('metric-avg').textContent = `${(state.metrics.totalTime / state.metrics.requests).toFixed(2)}s`;
+}
+
+// ─── Send Prompt ───
+async function sendPrompt() {
+  const prompt = document.getElementById('prompt-input').value.trim();
+  if (!prompt) return alert('Please enter a prompt.');
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true; btn.classList.add('loading');
+
+  document.getElementById('response-empty').style.display = 'none';
+
+  if (!state.model) { btn.disabled=false; btn.classList.remove('loading'); return alert('Please select a model.'); }
+  const key = state.keys[state.provider];
+  if (!key) { btn.disabled=false; btn.classList.remove('loading'); return alert(`No ${state.provider==='openai'?'OpenAI':'Anthropic'} API key found.`); }
+  const start = Date.now();
+    try {
+      const { text, tokens } = await callAPI(state.provider, key, state.model, prompt);
+      const elapsed = (Date.now()-start)/1000;
+      updateMetrics(elapsed, tokens, text.length);
+      renderResponse(text, elapsed, false, state.provider, state.model, tokens);
+    } catch(err) {
+      const elapsed = (Date.now()-start)/1000;
+      renderResponse(friendlyError(err, state.provider), elapsed, true, state.provider, state.model, null);
+    }
+
+  btn.disabled=false; btn.classList.remove('loading');
+}
+
+// ─── API Calls ───
+async function callAPI(provider, key, model, prompt) {
+  if (provider==='openai') return callOpenAI(key, model, prompt);
+  return callAnthropic(key, model, prompt);
+}
+
+async function callOpenAI(key, model, prompt) {
+  const messages = [{ role:'user', content:prompt }];
+  const body = { model, messages, max_tokens:1024 };
+  if (state.mode==='structured') {
+    const schemaStr = document.getElementById('schema-editor').value.trim();
+    if (schemaStr) {
+      try {
+        body.response_format = { type:'json_schema', json_schema:{ name:'response', schema:JSON.parse(schemaStr), strict:false } };
+      } catch { messages.unshift({ role:'system', content:`Respond ONLY with valid JSON matching this schema:\n${schemaStr}` }); }
+    } else {
+      messages.unshift({ role:'system', content:'Respond ONLY with valid JSON. No markdown, just JSON.' });
+    }
+  }
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`}, body:JSON.stringify(body)
+  });
+  if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(`${res.status}: ${e?.error?.message||res.statusText}`); }
+  const data = await res.json();
+  return { text: data.choices[0].message.content, tokens: data.usage?.total_tokens || null };
+}
+
+async function callAnthropic(key, model, prompt) {
+  const body = { model, max_tokens:1024, messages:[{role:'user',content:prompt}] };
+  if (state.mode==='structured') body.system = 'Respond ONLY with valid JSON. No markdown, just JSON.';
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST', headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'}, body:JSON.stringify(body)
+  });
+  if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(`${res.status}: ${e?.error?.message||res.statusText}`); }
+  const data = await res.json();
+  return { text: data.content[0].text, tokens: data.usage ? data.usage.input_tokens + data.usage.output_tokens : null };
+}
+
+function friendlyError(err, provider) {
+  const msg = err.message || '';
+  if (msg.includes('Failed to fetch')||msg.includes('NetworkError')||msg.includes('CORS'))
+    return provider==='anthropic'
+      ? '🚫 CORS Error: Anthropic\'s API blocks direct browser requests. This is expected web security behavior. A real app would route through a backend proxy.\n\nTechnical detail: Missing Access-Control-Allow-Origin header.'
+      : '🚫 Network Error: Could not reach the API. Check your connection and API key.';
+  if (msg.includes('401')||msg.includes('Unauthorized')) return '🔑 Invalid API Key: The key was rejected. Double-check it and try again.';
+  if (msg.includes('429')) return '⏱️ Rate Limited: Too many requests. Wait a moment and try again.';
+  if (msg.includes('500')||msg.includes('503')) return '🔧 Server Error: The API is having issues. Try again in a moment.';
+  return `❌ Error: ${msg}`;
+}
+
+// ─── Render Response ───
+function renderResponse(text, elapsed, isError, provider, model, tokens) {
+  const panel = document.getElementById('response-panel');
+  const card = document.createElement('div');
+  card.className = 'response-card';
+
+  const meta = document.createElement('div');
+  meta.className = 'response-meta';
+  const badges = document.createElement('div');
+  badges.className = 'response-badges';
+
+  const pb = document.createElement('span');
+  pb.className = `badge badge-provider-${provider}`;
+  pb.textContent = provider==='openai'?'OpenAI':'Anthropic';
+  const modeBadge = document.createElement('span');
+  modeBadge.className = 'badge badge-mode';
+  modeBadge.textContent = state.mode==='structured'?'{ } Structured':'¶ Unstructured';
+  const mb = document.createElement('span');
+  mb.className = 'badge badge-model';
+  mb.textContent = model;
+  badges.appendChild(pb); badges.appendChild(modeBadge); badges.appendChild(mb);
+
+  const stats = document.createElement('div');
+  stats.className = 'response-stats';
+  stats.innerHTML = `<span class="response-stat">${elapsed.toFixed(2)}s</span>${tokens?`<span class="response-stat">${tokens.toLocaleString()} tokens</span>`:''}${!isError?`<span class="response-stat">${text.length.toLocaleString()} chars</span>`:''}`;
+
+  meta.appendChild(badges); meta.appendChild(stats);
+
+  const bodyWrapper = document.createElement('div');
+  bodyWrapper.className = 'response-body-wrapper';
+
+  const body = document.createElement('div');
+  if (isError) { body.className='response-body error'; body.textContent=text; }
+  else if (state.mode==='structured') {
+    body.className='response-body json';
+    try { body.innerHTML=syntaxHighlight(JSON.stringify(JSON.parse(text),null,2)); }
+    catch { body.textContent=text; }
+  } else { body.className='response-body'; body.textContent=text; }
+
+  bodyWrapper.appendChild(body);
+  card.appendChild(meta); card.appendChild(bodyWrapper);
+  panel.insertBefore(card, panel.firstChild);
+
+  if (!isError) attachExpandIfNeeded(body, bodyWrapper);
+}
+
+function attachExpandIfNeeded(body, wrapper) {
+  // Check if content overflows
+  setTimeout(() => {
+    if (body.scrollHeight > body.clientHeight + 10) {
+      const fade = document.createElement('div');
+      fade.className = 'expand-fade';
+
+      const btn = document.createElement('button');
+      btn.className = 'expand-btn';
+      btn.textContent = '▼ Show full response';
+      btn.onclick = () => {
+        const expanded = body.classList.toggle('expanded');
+        btn.textContent = expanded ? '▲ Collapse' : '▼ Show full response';
+        fade.style.opacity = expanded ? '0' : '1';
+      };
+
+      const parent = wrapper || body.parentElement;
+      parent.appendChild(fade);
+      parent.appendChild(btn);
+    }
+  }, 50);
+}
+
+function syntaxHighlight(json) {
+  return json
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+      let cls='json-number';
+      if (/^"/.test(match)) cls=/:$/.test(match)?'json-key':'json-string';
+      else if (/true|false/.test(match)) cls='json-bool';
+      else if (/null/.test(match)) cls='json-null';
+      return `<span class="${cls}">${match}</span>`;
+    });
+}
+</script>
+</body>
+</html>
