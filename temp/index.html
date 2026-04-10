@@ -473,44 +473,32 @@ updateStepped('length');
 updateStepped('tone');
 
 // ─── Auto-load models on page ready ───
-fetchModels(state.apiKey);
+populateModels();
 
 function onModelChange() {
   state.model = document.getElementById('model-select').value;
   clearError('model-error');
 }
 
-// ─── Fetch model list ───
-async function fetchModels(key) {
-  const sel = document.getElementById('model-select');
-  sel.innerHTML = '<option value="">Loading…</option>';
-  try {
-    const res = await fetch('https://api.openai.com/v1/models', {
-      headers: { 'Authorization': `Bearer ${key}` }
-    });
-    if (!res.ok) {
-      sel.innerHTML = '<option value="">Could not load models — check key</option>';
-      return;
-    }
-    const data = await res.json();
-    const ids = data.data
-      .map(m => m.id)
-      .filter(id => id.startsWith('gpt') && !id.includes('instruct') &&
-                    !id.includes('realtime') && !id.includes('audio') &&
-                    !id.includes('search'))
-      .sort((a, b) => b.localeCompare(a));
+// ─── Model list ───
+const GPT_MODELS = [
+  'gpt-4o',
+  'gpt-4o-mini',
+  'gpt-4-turbo',
+  'gpt-4',
+  'gpt-3.5-turbo',
+];
 
-    sel.innerHTML = '<option value="">— Select a model —</option>';
-    ids.forEach(id => {
-      const opt = document.createElement('option');
-      opt.value = id;
-      opt.textContent = id;
-      sel.appendChild(opt);
-    });
-    sel.onchange = onModelChange;
-  } catch {
-    sel.innerHTML = '<option value="">Network error — check key</option>';
-  }
+function populateModels() {
+  const sel = document.getElementById('model-select');
+  sel.innerHTML = '<option value="">— Select a model —</option>';
+  GPT_MODELS.forEach(id => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = id;
+    sel.appendChild(opt);
+  });
+  sel.onchange = onModelChange;
 }
 
 // ─── OpenAI fetch ───
