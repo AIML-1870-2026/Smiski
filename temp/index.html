@@ -473,7 +473,7 @@ updateStepped('length');
 updateStepped('tone');
 
 // ─── Auto-load models on page ready ───
-document.addEventListener('DOMContentLoaded', () => fetchModels(state.apiKey));
+fetchModels(state.apiKey);
 
 function onModelChange() {
   state.model = document.getElementById('model-select').value;
