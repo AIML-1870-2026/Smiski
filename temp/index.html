@@ -526,14 +526,14 @@ async function callOpenAI(key, model, systemPrompt, userPrompt) {
 
 function friendlyError(err) {
   const msg = err.message || '';
-  if (msg.includes('Failed to fetch') || msg.includes('NetworkError'))
-    return '🚫 Network Error: Could not reach the API. Check your connection and API key.';
   if (msg.includes('401') || msg.includes('Unauthorized'))
-    return '🔑 Invalid API Key: The key was rejected. Double-check it and try again.';
+    return '🔑 Invalid or revoked API Key: The key was rejected by OpenAI. It may have been auto-revoked because it was exposed in a public repo. Generate a new key at platform.openai.com.';
   if (msg.includes('429'))
     return '⏱️ Rate Limited: Too many requests. Wait a moment and try again.';
   if (msg.includes('500') || msg.includes('503'))
     return '🔧 Server Error: The API is having issues. Try again in a moment.';
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError'))
+    return `🚫 Network Error: Could not reach the OpenAI API. The API key may have been auto-revoked after being detected in a public GitHub repo. Raw error: ${msg}`;
   return `❌ Error: ${msg}`;
 }
 
