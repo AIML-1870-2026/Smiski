@@ -472,9 +472,6 @@ updateSentiment();
 updateStepped('length');
 updateStepped('tone');
 
-// ─── Auto-load models on page ready ───
-populateModels();
-
 function onModelChange() {
   state.model = document.getElementById('model-select').value;
   clearError('model-error');
@@ -500,6 +497,7 @@ function populateModels() {
   });
   sel.onchange = onModelChange;
 }
+populateModels();
 
 // ─── OpenAI fetch ───
 async function callOpenAI(key, model, systemPrompt, userPrompt) {
