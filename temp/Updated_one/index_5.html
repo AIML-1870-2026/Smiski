@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Review Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e0d8;
+    --text: #1a1916;
+    --text-muted: #7a7870;
+    --accent: #2a6049;
+    --accent-light: #e8f0ec;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ─── Header ─── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.3rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; display: inline-block; }
+  .header-sub { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+
+  /* ─── Layout ─── */
+  .layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    height: calc(100vh - 60px);
+  }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  /* ─── Key Tabs ─── */
+  .key-tabs {
+    display: flex;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+    margin-bottom: 10px;
+  }
+  .key-tab {
+    flex: 1; padding: 6px 10px; border: none; background: transparent;
+    border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 12px;
+    font-weight: 500; cursor: pointer; color: var(--text-muted); transition: all 0.15s;
+  }
+  .key-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .key-panel { display: none; }
+  .key-panel.active { display: block; }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border); border-radius: var(--radius);
+    padding: 18px 14px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--surface2);
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-light); }
+  .drop-icon { font-size: 20px; margin-bottom: 4px; }
+  .drop-text { font-size: 12px; color: var(--text-muted); }
+  .drop-text strong { color: var(--accent); }
+  #file-input { display: none; }
+
+  .key-status { margin-top: 8px; font-size: 11px; padding: 6px 10px; border-radius: 6px; display: none; }
+  .key-status.ok  { background: var(--accent-light); color: var(--accent); display: block; }
+  .key-status.err { background: #fdecea; color: #c0392b; display: block; }
+
+  .paste-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .paste-group label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .paste-input {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'DM Mono', monospace; font-size: 12px; background: var(--surface2);
+    color: var(--text); outline: none; transition: border-color 0.15s;
+  }
+  .paste-input:focus { border-color: var(--accent); }
+
+  .privacy-note {
+    font-size: 11px; color: var(--text-muted); margin-top: 6px;
+    display: flex; gap: 5px; align-items: flex-start;
+  }
+  .privacy-note::before { content: '🔒'; font-size: 10px; margin-top: 1px; flex-shrink: 0; }
+
+  /* ─── Selects ─── */
+  select {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--surface2);
+    color: var(--text); outline: none; cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a7870' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    margin-top: 4px; transition: border-color 0.15s;
+  }
+  select:focus { border-color: var(--accent); }
+
+  /* ─── Text Inputs ─── */
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+  input[type="text"] {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; background: var(--surface2);
+    color: var(--text); outline: none; transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--text-muted); }
+
+  textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.6;
+    background: var(--surface2); color: var(--text); resize: vertical; outline: none;
+    transition: border-color 0.15s; min-height: 78px;
+  }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--text-muted); }
+
+  /* ─── Star Chips ─── */
+  .chip-group { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+  .chip {
+    padding: 5px 12px; border: 1px solid var(--border); border-radius: 20px;
+    font-size: 12px; font-weight: 500; cursor: pointer; background: var(--surface2);
+    color: var(--text-muted); transition: all 0.12s; user-select: none;
+  }
+  .chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .chip:not(.active):hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ─── STRETCH: Sliders ─── */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .slider-label-left,
+  .slider-label-right {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    min-width: 52px;
+  }
+  .slider-label-right { text-align: right; }
+
+  .slider-value-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-light);
+    border-radius: 20px;
+    padding: 2px 8px;
+    min-width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    transition: transform 0.1s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent); cursor: pointer;
+    border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  }
+
+  .sentiment-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .sentiment-aspect {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .sentiment-aspect-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sentiment-aspect-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .tone-slider-wrap {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .tone-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+  .tone-label {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .length-slider-wrap {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .length-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+  .length-label { font-size: 10px; color: var(--text-muted); }
+
+  /* ─── Generate Button ─── */
+  .send-btn {
+    width: 100%; padding: 13px 20px; background: var(--text); color: #fff;
+    border: none; border-radius: var(--radius); font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 600; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;
+  }
+  .send-btn:hover:not(:disabled) { background: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(42,96,73,0.25); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .send-btn .spinner {
+    width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .send-btn.loading .spinner { display: block; }
+  .send-btn.loading .btn-text { display: none; }
+
+  /* ─── Response Panel ─── */
+  .response-panel {
+    overflow-y: auto; padding: 28px 36px;
+    display: flex; flex-direction: column; gap: 20px;
+    background: var(--bg);
+  }
+
+  .response-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; min-height: 300px; text-align: center; color: var(--text-muted);
+  }
+  .response-empty-icon { font-size: 40px; margin-bottom: 14px; opacity: 0.4; }
+  .response-empty h3 {
+    font-family: 'DM Serif Display', serif; font-size: 1.3rem; margin-bottom: 6px;
+    font-weight: 400; color: var(--text); opacity: 0.5;
+  }
+  .response-empty p { font-size: 13px; opacity: 0.6; }
+
+  /* ─── Response Card ─── */
+  .response-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; box-shadow: var(--shadow);
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .response-meta {
+    padding: 12px 18px; border-bottom: 1px solid var(--border);
+    background: var(--surface2); display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  .response-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; letter-spacing: 0.03em; }
+  .badge-provider { background: #1a1916; color: #fff; }
+  .badge-stars    { background: var(--accent-light); color: var(--accent); }
+  .badge-tone     { background: var(--border); color: var(--text-muted); font-weight: 500; }
+  .badge-model    { background: var(--border); color: var(--text-muted); font-family: 'DM Mono', monospace; font-size: 10px; }
+
+  .response-actions { display: flex; gap: 10px; align-items: center; }
+  .response-stat { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+
+  .response-body-wrapper { position: relative; }
+  .response-body {
+    padding: 20px 24px; font-size: 14px; line-height: 1.8;
+    word-break: break-word; max-height: 340px; overflow: hidden; transition: max-height 0.3s ease;
+  }
+  .response-body.expanded { max-height: none; }
+  .response-body.error { color: #c0392b; background: #fdecea; font-size: 13px; white-space: pre-wrap; }
+  .response-body h1, .response-body h2, .response-body h3 { margin: 0.75em 0 0.4em; font-weight: 600; }
+  .response-body h1 { font-size: 1.05rem; }
+  .response-body p { margin-bottom: 0.6em; }
+  .response-body ul, .response-body ol { padding-left: 1.4em; margin-bottom: 0.6em; }
+  .response-body li { margin-bottom: 0.2em; }
+  .response-body strong { font-weight: 600; }
+
+  .expand-fade {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
+    background: linear-gradient(transparent, white); pointer-events: none; transition: opacity 0.2s;
+  }
+  .expand-btn {
+    width: 100%; padding: 8px; border: none; border-top: 1px solid var(--border);
+    background: var(--surface2); font-family: 'DM Sans', sans-serif; font-size: 12px;
+    font-weight: 500; cursor: pointer; color: var(--text-muted); transition: all 0.15s;
+  }
+  .expand-btn:hover { background: var(--accent-light); color: var(--accent); }
+
+  .copy-btn-sm {
+    padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 11px;
+    font-weight: 500; cursor: pointer; color: var(--text-muted); transition: all 0.15s;
+  }
+  .copy-btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+
+  .model-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-dot"></span>
+    Product Review Generator
+  </div>
+  <span class="header-sub">Powered by OpenAI</span>
+</header>
+
+<div class="layout">
+  <!-- ─── Sidebar ─── -->
+  <div class="sidebar">
+
+    <!-- API Key -->
+    <div>
+      <div class="section-label">API Key</div>
+      <div class="key-tabs">
+        <button class="key-tab active" onclick="switchKeyTab('file')">Drop .env file</button>
+        <button class="key-tab" onclick="switchKeyTab('paste')">Paste key</button>
+      </div>
+      <div class="key-panel active" id="panel-file">
+        <div class="drop-zone" id="drop-zone"
+          onclick="document.getElementById('file-input').click()"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave()"
+          ondrop="handleDrop(event)">
+          <div class="drop-icon">📄</div>
+          <div class="drop-text"><strong>Click or drag</strong> your .env file here</div>
+        </div>
+        <input type="file" id="file-input" accept=".env,text/*" onchange="handleFileSelect(event)">
+        <div class="key-status" id="file-status"></div>
+        <p class="privacy-note">Read in-memory only — never stored or sent anywhere except OpenAI.</p>
+      </div>
+      <div class="key-panel" id="panel-paste">
+        <div class="paste-group">
+          <label>OpenAI API Key</label>
+          <input type="password" class="paste-input" id="paste-openai" placeholder="sk-..." oninput="handlePasteKey()">
+        </div>
+        <div class="key-status" id="paste-status"></div>
+        <p class="privacy-note">Read in-memory only — never stored or sent anywhere except OpenAI.</p>
+      </div>
+    </div>
+
+    <!-- Model -->
+    <div>
+      <div class="section-label">Model</div>
+      <div class="model-row">
+        <div class="field">
+          <label>Family</label>
+          <select id="family-select" onchange="updateModels()">
+            <option value="gpt4">GPT-4</option>
+            <option value="gpt35">GPT-3.5</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <select id="model-select"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product -->
+    <div>
+      <div class="section-label">Product</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="field">
+          <label>Product name</label>
+          <input type="text" id="product-name" placeholder="e.g. Sony WH-1000XM5 Headphones">
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <input type="text" id="product-category" placeholder="e.g. Electronics, Clothing, Kitchen">
+        </div>
+        <div class="field">
+          <label>Key features / details <span style="opacity:0.5">(optional)</span></label>
+          <textarea id="product-details" placeholder="e.g. Noise cancelling, 30hr battery, USB-C charging..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Star Rating -->
+    <div>
+      <div class="section-label">Star Rating</div>
+      <div class="chip-group" id="star-chips">
+        <span class="chip" data-val="1">★ 1</span>
+        <span class="chip" data-val="2">★★ 2</span>
+        <span class="chip" data-val="3">★★★ 3</span>
+        <span class="chip" data-val="4">★★★★ 4</span>
+        <span class="chip active" data-val="5">★★★★★ 5</span>
+      </div>
+    </div>
+
+    <!-- STRETCH 1: Multiple Sentiment Layers -->
+    <div>
+      <div class="section-label">Sentiment Layers <span style="font-size:9px;background:var(--accent);color:white;padding:1px 6px;border-radius:10px;letter-spacing:0.05em;margin-left:4px;">STRETCH</span></div>
+      <div class="sentiment-block">
+
+        <div class="sentiment-aspect">
+          <div class="sentiment-aspect-header">
+            <span class="sentiment-aspect-name">Price / Value</span>
+            <span class="slider-value-badge" id="price-badge">Neutral</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label-left">Negative</span>
+            <input type="range" min="1" max="5" value="3" step="1" id="slider-price" oninput="updateSentimentBadge('price')">
+            <span class="slider-label-right">Positive</span>
+          </div>
+        </div>
+
+        <div class="sentiment-aspect">
+          <div class="sentiment-aspect-header">
+            <span class="sentiment-aspect-name">Features</span>
+            <span class="slider-value-badge" id="features-badge">Neutral</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label-left">Negative</span>
+            <input type="range" min="1" max="5" value="3" step="1" id="slider-features" oninput="updateSentimentBadge('features')">
+            <span class="slider-label-right">Positive</span>
+          </div>
+        </div>
+
+        <div class="sentiment-aspect">
+          <div class="sentiment-aspect-header">
+            <span class="sentiment-aspect-name">Usability</span>
+            <span class="slider-value-badge" id="usability-badge">Neutral</span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label-left">Negative</span>
+            <input type="range" min="1" max="5" value="3" step="1" id="slider-usability" oninput="updateSentimentBadge('usability')">
+            <span class="slider-label-right">Positive</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STRETCH 2: Rich UI — Tone Slider -->
+    <div>
+      <div class="section-label">Tone / Style <span style="font-size:9px;background:var(--accent);color:white;padding:1px 6px;border-radius:10px;letter-spacing:0.05em;margin-left:4px;">STRETCH</span></div>
+      <div class="tone-slider-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:12px;font-weight:500;color:var(--text)">Selected tone:</span>
+          <span class="slider-value-badge" id="tone-badge">Balanced</span>
+        </div>
+        <input type="range" min="0" max="5" value="2" step="1" id="slider-tone" oninput="updateToneBadge()" style="width:100%">
+        <div class="tone-labels">
+          <span class="tone-label">Formal</span>
+          <span class="tone-label">Critical</span>
+          <span class="tone-label">Balanced</span>
+          <span class="tone-label">Casual</span>
+          <span class="tone-label">Enthusiastic</span>
+          <span class="tone-label">Humorous</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STRETCH 2: Rich UI — Length Slider -->
+    <div>
+      <div class="section-label">Review Length <span style="font-size:9px;background:var(--accent);color:white;padding:1px 6px;border-radius:10px;letter-spacing:0.05em;margin-left:4px;">STRETCH</span></div>
+      <div class="length-slider-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:12px;font-weight:500;color:var(--text)">Selected length:</span>
+          <span class="slider-value-badge" id="length-badge">Medium</span>
+        </div>
+        <input type="range" min="0" max="2" value="1" step="1" id="slider-length" oninput="updateLengthBadge()" style="width:100%">
+        <div class="length-labels">
+          <span class="length-label">Short</span>
+          <span class="length-label" style="text-align:center">Medium</span>
+          <span class="length-label" style="text-align:right">Long</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Persona -->
+    <div>
+      <div class="section-label">Reviewer Persona</div>
+      <div class="field">
+        <label>Optional — shapes the reviewer's voice</label>
+        <input type="text" id="persona" placeholder="e.g. a busy parent, a tech-savvy student…">
+      </div>
+    </div>
+
+    <!-- Generate -->
+    <button class="send-btn" id="generate-btn" onclick="generate()">
+      <div class="spinner"></div>
+      <span class="btn-text">Generate Review</span>
+    </button>
+
+  </div><!-- /sidebar -->
+
+  <!-- ─── Response Panel ─── -->
+  <div class="response-panel" id="response-panel">
+    <div class="response-empty" id="response-empty">
+      <div class="response-empty-icon">✍️</div>
+      <h3>No reviews yet</h3>
+      <p>Fill in the product details and hit Generate.</p>
+    </div>
+  </div>
+
+</div><!-- /layout -->
+
+<script>
+const state = { apiKey: null, model: 'gpt-4o' };
+
+const MODELS = {
+  gpt4:  [
+    { id: 'gpt-4o',        label: 'GPT-4o (recommended)' },
+    { id: 'gpt-4o-mini',   label: 'GPT-4o Mini' },
+    { id: 'gpt-4-turbo',   label: 'GPT-4 Turbo' },
+    { id: 'gpt-4',         label: 'GPT-4' },
+  ],
+  gpt35: [{ id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }],
+};
+
+const TONES   = ['Formal', 'Critical', 'Balanced', 'Casual', 'Enthusiastic', 'Humorous'];
+const LENGTHS = ['Short', 'Medium', 'Long'];
+const SENTIMENTS = { 1: 'Very Negative', 2: 'Negative', 3: 'Neutral', 4: 'Positive', 5: 'Very Positive' };
+
+const LENGTH_MAP = {
+  Short:  '2 to 3 sentences',
+  Medium: '1 to 2 paragraphs',
+  Long:   '3 or more detailed paragraphs covering pros, cons, and a final verdict',
+};
+
+// ─── Key Tab ───
+function switchKeyTab(tab) {
+  document.querySelectorAll('.key-tab').forEach((t, i) =>
+    t.classList.toggle('active', (i===0&&tab==='file')||(i===1&&tab==='paste')));
+  document.getElementById('panel-file').classList.toggle('active', tab==='file');
+  document.getElementById('panel-paste').classList.toggle('active', tab==='paste');
+}
+
+// ─── File Drop ───
+function handleDragOver(e)  { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
+function handleDragLeave()  { document.getElementById('drop-zone').classList.remove('dragover'); }
+function handleDrop(e)      { e.preventDefault(); document.getElementById('drop-zone').classList.remove('dragover'); if(e.dataTransfer.files[0]) parseKeyFile(e.dataTransfer.files[0]); }
+function handleFileSelect(e){ if(e.target.files[0]) parseKeyFile(e.target.files[0]); }
+
+function parseKeyFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const envOAI = text.match(/OPENAI_API_KEY\s*=\s*([^\s\n]+)/i);
+    if (envOAI) {
+      state.apiKey = envOAI[1].trim();
+    } else {
+      text.split('\n').forEach(line => line.split(',').forEach(p => {
+        const val = p.trim().replace(/['"]/g, '');
+        if (val.startsWith('sk-') && !val.startsWith('sk-ant-')) state.apiKey = val;
+      }));
+    }
+    const status = document.getElementById('file-status');
+    if (state.apiKey) { status.className = 'key-status ok';  status.textContent = '✓ OpenAI key loaded'; }
+    else              { status.className = 'key-status err'; status.textContent = 'No OpenAI key found. Expected OPENAI_API_KEY=sk-...'; }
+  };
+  reader.readAsText(file);
+}
+
+function handlePasteKey() {
+  const val = document.getElementById('paste-openai').value.trim();
+  state.apiKey = val || null;
+  const status = document.getElementById('paste-status');
+  if (val) { status.className = 'key-status ok'; status.textContent = '✓ Key set'; }
+  else      { status.className = 'key-status';   status.style.display = 'none'; }
+}
+
+// ─── Models ───
+function updateModels() {
+  const family = document.getElementById('family-select').value;
+  const sel    = document.getElementById('model-select');
+  sel.innerHTML = '';
+  MODELS[family].forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id; opt.textContent = m.label;
+    sel.appendChild(opt);
+  });
+  state.model = MODELS[family][0].id;
+  sel.onchange = () => { state.model = sel.value; };
+}
+updateModels();
+
+// ─── Star Chips ───
+document.getElementById('star-chips').addEventListener('click', e => {
+  if (!e.target.classList.contains('chip')) return;
+  document.querySelectorAll('#star-chips .chip').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+});
+function getStars() {
+  const a = document.querySelector('#star-chips .chip.active');
+  return a ? a.dataset.val : '5';
+}
+
+// ─── STRETCH 1: Sentiment badges ───
+function updateSentimentBadge(aspect) {
+  const val = parseInt(document.getElementById('slider-' + aspect).value);
+  document.getElementById(aspect + '-badge').textContent = SENTIMENTS[val];
+}
+
+// ─── STRETCH 2: Tone & Length badges ───
+function updateToneBadge() {
+  const val = parseInt(document.getElementById('slider-tone').value);
+  document.getElementById('tone-badge').textContent = TONES[val];
+}
+function updateLengthBadge() {
+  const val = parseInt(document.getElementById('slider-length').value);
+  document.getElementById('length-badge').textContent = LENGTHS[val];
+}
+
+function getTone()   { return TONES[parseInt(document.getElementById('slider-tone').value)]; }
+function getLength() { return LENGTHS[parseInt(document.getElementById('slider-length').value)]; }
+function getSentiment(aspect) { return SENTIMENTS[parseInt(document.getElementById('slider-' + aspect).value)]; }
+
+// ─── Error messages ───
+function friendlyError(err) {
+  const msg = err.message || '';
+  if (msg.includes('401') || msg.includes('Unauthorized')) return '🔑 Invalid API key — double-check it and try again.';
+  if (msg.includes('429')) return '⏱️ Rate limited — wait a moment and try again.';
+  if (msg.includes('500') || msg.includes('503')) return '🔧 OpenAI server error — try again in a moment.';
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) return '🌐 Network error — check your connection.';
+  return `❌ Error: ${msg}`;
+}
+
+// ─── Generate ───
+async function generate() {
+  const productName     = document.getElementById('product-name').value.trim();
+  const productCategory = document.getElementById('product-category').value.trim();
+  const productDetails  = document.getElementById('product-details').value.trim();
+  const persona         = document.getElementById('persona').value.trim();
+
+  const stars     = getStars();
+  const tone      = getTone();
+  const length    = getLength();
+  const priceSent    = getSentiment('price');
+  const featuresSent = getSentiment('features');
+  const usabilitySent= getSentiment('usability');
+
+  if (!state.apiKey) { alert('Please load or paste your OpenAI API key first.'); return; }
+  if (!productName)  { alert('Please enter a product name.'); return; }
+
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true; btn.classList.add('loading');
+  document.getElementById('response-empty').style.display = 'none';
+
+  const personaLine = persona ? `Write from the perspective of ${persona}.` : '';
+  const detailsLine = productDetails ? `Key features/details: ${productDetails}` : '';
+
+  const prompt = `You are a helpful assistant that writes realistic, human-sounding product reviews.
+
+Write a ${stars}-star product review for the following:
+
+Product: ${productName}
+Category: ${productCategory || 'General'}
+${detailsLine}
+
+Sentiment breakdown — reflect each of these distinctly in the review body:
+- Price / Value: ${priceSent}
+- Features: ${featuresSent}
+- Usability: ${usabilitySent}
+
+Requirements:
+- Overall star rating: ${stars} out of 5
+- Tone / style: ${tone}
+- Length: ${LENGTH_MAP[length]}
+${personaLine ? '- ' + personaLine : ''}
+- Write as a real customer would — natural, specific, and believable.
+- Start with a bold title on the first line.
+- Use markdown formatting where appropriate (bold, lists for pros/cons if long).
+- Output ONLY the review — no preamble or explanation.`;
+
+  const start = Date.now();
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
+      body: JSON.stringify({ model: state.model, messages: [{ role: 'user', content: prompt }], max_tokens: 900, temperature: 0.85 })
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(`${res.status}: ${e?.error?.message || res.statusText}`);
+    }
+    const data    = await res.json();
+    const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+    const text    = data.choices[0].message.content;
+    const tokens  = data.usage?.total_tokens || null;
+    renderCard(text, false, elapsed, tokens, stars, tone, length, priceSent, featuresSent, usabilitySent);
+  } catch(err) {
+    const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+    renderCard(friendlyError(err), true, elapsed, null, stars, tone, length, '', '', '');
+  }
+
+  btn.disabled = false; btn.classList.remove('loading');
+}
+
+// ─── Render Card ───
+function renderCard(text, isError, elapsed, tokens, stars, tone, length, priceSent, featuresSent, usabilitySent) {
+  const panel = document.getElementById('response-panel');
+
+  const card = document.createElement('div');
+  card.className = 'response-card';
+
+  // Meta bar
+  const meta = document.createElement('div');
+  meta.className = 'response-meta';
+
+  const badges = document.createElement('div');
+  badges.className = 'response-badges';
+
+  [
+    ['badge-provider', 'OpenAI'],
+    ['badge-stars',    '★'.repeat(Number(stars)) + ' ' + stars + '/5'],
+    ['badge-tone',     tone + ' · ' + length],
+    ['badge-model',    document.getElementById('model-select').value],
+  ].forEach(([cls, txt]) => {
+    const b = document.createElement('span');
+    b.className = 'badge ' + cls; b.textContent = txt;
+    badges.appendChild(b);
+  });
+
+  // Sentiment mini-badges
+  if (!isError && priceSent) {
+    [['💰 Price', priceSent], ['⚙️ Features', featuresSent], ['👆 Usability', usabilitySent]].forEach(([label, val]) => {
+      const b = document.createElement('span');
+      b.className = 'badge badge-tone';
+      b.textContent = label + ': ' + val;
+      badges.appendChild(b);
+    });
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'response-actions';
+
+  if (elapsed) {
+    const stat = document.createElement('span');
+    stat.className = 'response-stat';
+    stat.textContent = elapsed + 's' + (tokens ? ' · ' + tokens.toLocaleString() + ' tokens' : '');
+    actions.appendChild(stat);
+  }
+
+  if (!isError) {
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'copy-btn-sm';
+    copyBtn.textContent = 'Copy';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(text);
+      copyBtn.textContent = '✓ Copied';
+      setTimeout(() => copyBtn.textContent = 'Copy', 1800);
+    };
+    actions.appendChild(copyBtn);
+  }
+
+  meta.appendChild(badges);
+  meta.appendChild(actions);
+
+  // Body
+  const wrapper = document.createElement('div');
+  wrapper.className = 'response-body-wrapper';
+
+  const body = document.createElement('div');
+  if (isError) {
+    body.className = 'response-body error';
+    body.textContent = text;
+  } else {
+    body.className = 'response-body';
+    body.innerHTML = marked.parse(text);
+  }
+
+  wrapper.appendChild(body);
+  card.appendChild(meta);
+  card.appendChild(wrapper);
+  panel.insertBefore(card, panel.firstChild);
+
+  if (!isError) {
+    setTimeout(() => {
+      if (body.scrollHeight > body.clientHeight + 10) {
+        const fade = document.createElement('div');
+        fade.className = 'expand-fade';
+        const expBtn = document.createElement('button');
+        expBtn.className = 'expand-btn';
+        expBtn.textContent = '▼ Show full review';
+        expBtn.onclick = () => {
+          const expanded = body.classList.toggle('expanded');
+          expBtn.textContent = expanded ? '▲ Collapse' : '▼ Show full review';
+          fade.style.opacity = expanded ? '0' : '1';
+        };
+        wrapper.appendChild(fade);
+        wrapper.appendChild(expBtn);
+      }
+    }, 50);
+  }
+}
+</script>
+</body>
+</html>
