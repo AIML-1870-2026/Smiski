@@ -282,17 +282,6 @@
 
 <div class="container">
 
-  <!-- ── API Key ── -->
-  <div class="card">
-    <div class="section-label">API Configuration</div>
-    <div class="field">
-      <label for="api-key">OpenAI API Key</label>
-      <input type="password" id="api-key" placeholder="sk-…" autocomplete="off" oninput="onKeyInput()">
-      <span class="field-note">Key is never saved — held in memory only for this session.</span>
-      <span class="inline-error" id="key-error">API key is required.</span>
-    </div>
-  </div>
-
   <!-- ── Product Info ── -->
   <div class="card">
     <div class="section-label">Product Information</div>
@@ -321,7 +310,7 @@
       <div class="field">
         <label for="model-select">Model</label>
         <select id="model-select" onchange="onModelChange()">
-          <option value="">— Enter API key to load —</option>
+          <option value="">— Loading models… —</option>
         </select>
         <span class="inline-error" id="model-error">Please select a model.</span>
       </div>
@@ -416,7 +405,8 @@
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 // ─── State ───
-const state = { apiKey: null, model: '' };
+const API_KEY = 'sk-proj-vz9AMivdSuDu4ovfRIMXoG0okv_0DKllMbKk3sWt4tqoriiyB3RTxZZ1Mjd62JwUuSCKAoHY7uT3BlbkFJzEWig9w8gbmTq6i0agAHVLFiORS0I_TY_XOd2x_bh9RIstsamaGrOFKSR_OZPfjAed9GoA';
+const state = { apiKey: API_KEY, model: '' };
 
 const LENGTH_LABELS  = ['Short', 'Medium', 'Long'];
 const TONE_LABELS    = ['Casual', 'Balanced', 'Formal'];
@@ -482,13 +472,8 @@ updateSentiment();
 updateStepped('length');
 updateStepped('tone');
 
-// ─── API key ───
-function onKeyInput() {
-  const v = document.getElementById('api-key').value.trim();
-  state.apiKey = v || null;
-  clearError('key-error');
-  if (v.length > 20) fetchModels(v);
-}
+// ─── Auto-load models on page ready ───
+document.addEventListener('DOMContentLoaded', () => fetchModels(state.apiKey));
 
 function onModelChange() {
   state.model = document.getElementById('model-select').value;
@@ -598,7 +583,6 @@ function buildPrompts() {
 // ─── Validation ───
 function validate() {
   let ok = true;
-  if (!state.apiKey) { showError('key-error'); ok = false; }
   if (!document.getElementById('product-name').value.trim()) { showError('name-error'); ok = false; }
   state.model = document.getElementById('model-select').value;
   if (!state.model) { showError('model-error'); ok = false; }
@@ -610,7 +594,7 @@ function clearError(id) { document.getElementById(id).style.display = 'none'; }
 
 // ─── Generate ───
 async function generateReview() {
-  ['key-error', 'name-error', 'model-error'].forEach(clearError);
+  ['name-error', 'model-error'].forEach(clearError);
   if (!validate()) return;
 
   const btn    = document.getElementById('generate-btn');
