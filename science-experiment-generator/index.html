@@ -114,6 +114,23 @@
   }
   .privacy-note::before { content: '🔒'; font-size: 10px; margin-top: 1px; flex-shrink: 0; }
 
+  .or-divider {
+    display: flex; align-items: center; gap: 8px;
+    margin: 10px 0; font-size: 11px; color: var(--text-muted);
+  }
+  .or-divider::before, .or-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .paste-key-input {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'DM Mono', monospace; font-size: 12px; background: var(--surface2);
+    color: var(--text); outline: none; transition: border-color 0.15s;
+    letter-spacing: 0.02em;
+  }
+  .paste-key-input:focus { border-color: var(--accent); }
+  .paste-key-input::placeholder { font-family: 'DM Sans', sans-serif; letter-spacing: normal; color: var(--text-muted); }
+
   /* ─── Grade Select ─── */
   select {
     width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
@@ -380,6 +397,9 @@
         <div class="drop-text">Drop your <strong>.env</strong> file<br>or <strong>click to browse</strong></div>
       </div>
       <input type="file" id="file-input" accept=".env,.txt,.csv" onchange="handleFileSelect(event)">
+      <div class="or-divider">or paste key directly</div>
+      <input type="password" class="paste-key-input" id="paste-key-input"
+             placeholder="sk-..." oninput="handlePasteKey()">
       <div class="key-status" id="key-status"></div>
       <div class="privacy-note">Key held in memory only — never stored or transmitted except directly to OpenAI.</div>
     </div>
@@ -495,6 +515,24 @@ function handleDrop(e) {
 }
 function handleFileSelect(e) {
   if (e.target.files[0]) parseKeyFile(e.target.files[0]);
+}
+
+function handlePasteKey() {
+  const val = document.getElementById('paste-key-input').value.trim();
+  const status = document.getElementById('key-status');
+  if (val.startsWith('sk-') && !val.startsWith('sk-ant-')) {
+    state.apiKey = val;
+    status.className = 'key-status ok';
+    status.textContent = '✓ OpenAI key set';
+  } else if (val.length > 0) {
+    state.apiKey = null;
+    status.className = 'key-status err';
+    status.textContent = 'Key should start with sk-…';
+  } else {
+    state.apiKey = null;
+    status.className = 'key-status';
+    status.textContent = '';
+  }
 }
 
 function parseKeyFile(file) {
