@@ -125,6 +125,26 @@
     .key-status.ok  { background: rgba(42,122,80,.2); color: #6fd89a; display: block; border: 1px solid #2a7a50; }
     .key-status.err { background: rgba(180,40,40,.15); color: #e08080; display: block; border: 1px solid #7a3030; }
 
+    .key-input-row {
+      display: flex; gap: 6px; margin-top: 8px;
+    }
+    .key-text-input {
+      flex: 1; background: rgba(0,0,0,.4); border: 1.5px solid var(--ai-border);
+      color: var(--cream-dark); font-family: 'Courier Prime', monospace;
+      font-size: .75rem; padding: 7px 10px; letter-spacing: .03em;
+      outline: none; transition: border-color .15s;
+    }
+    .key-text-input::placeholder { color: var(--text-dim); }
+    .key-text-input:focus { border-color: var(--ai-accent); }
+    .key-set-btn {
+      background: var(--ai-accent); border: 1px solid #3aaa70;
+      color: #c0f8dc; font-family: 'Courier Prime', monospace;
+      font-size: .72rem; font-weight: 700; letter-spacing: .1em;
+      padding: 7px 14px; cursor: pointer; white-space: nowrap;
+      transition: all .12s;
+    }
+    .key-set-btn:hover { background: #38a068; filter: brightness(1.1); }
+
     /* Settings */
     .inst-settings {
       max-width: 760px; width: 100%;
@@ -780,6 +800,10 @@
       </div>
     </div>
     <input type="file" id="file-input" accept=".env,text/plain">
+    <div class="key-input-row">
+      <input type="password" class="key-text-input" id="key-text-input" placeholder="…or paste your API key directly (sk-ant-…)">
+      <button class="key-set-btn" id="key-set-btn">SET KEY</button>
+    </div>
     <div class="key-status" id="key-status"></div>
   </div>
 
@@ -951,6 +975,10 @@
           <div class="drop-text" style="font-size:.7rem">Drop <strong>.env</strong> or click to upload</div>
         </div>
         <input type="file" id="file-input2" accept=".env,text/plain">
+        <div class="key-input-row">
+          <input type="password" class="key-text-input" id="key-text-input-2" placeholder="Paste API key (sk-ant-…)">
+          <button class="key-set-btn" id="key-set-btn-2">SET</button>
+        </div>
         <div class="key-status" id="key-status-2"></div>
       </div>
 
@@ -1917,6 +1945,34 @@ function wireDropZone(zoneId, inputId, statusId) {
 }
 wireDropZone('drop-zone','file-input','key-status');
 wireDropZone('drop-zone-2','file-input2','key-status-2');
+
+function wireKeyInput(inputId, btnId, statusId) {
+  const input = document.getElementById(inputId);
+  const btn   = document.getElementById(btnId);
+  const statusEl = document.getElementById(statusId);
+  function applyKey() {
+    const val = input.value.trim();
+    if (val.startsWith('sk-ant')) {
+      AI.apiKey = val;
+      statusEl.className = 'key-status ok';
+      statusEl.textContent = '✓ API key set — AI Agent ready';
+      D.aiKeyIndicator.textContent = '✓ Key loaded';
+      D.aiKeyIndicator.style.color = '#6fd89a';
+      console.log('[AI] API key set manually');
+    } else if (val.length > 0) {
+      statusEl.className = 'key-status err';
+      statusEl.textContent = '✗ Key must start with sk-ant-…';
+    } else {
+      statusEl.className = 'key-status err';
+      statusEl.textContent = '✗ Please enter an API key';
+    }
+  }
+  btn.addEventListener('click', applyKey);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') applyKey(); });
+}
+
+wireKeyInput('key-text-input','key-set-btn','key-status');
+wireKeyInput('key-text-input-2','key-set-btn-2','key-status-2');
 
 /* ═══════════════════════════════════════════════
    MAIN EVENT LISTENERS
