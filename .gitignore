@@ -1,0 +1,12 @@
+# Large media files
+*.MP4
+*.mp4
+*.mov
+*.MOV
+
+# macOS
+.DS_Store
+Icon?
+
+# Temp/reference folder
+temp/
