@@ -1145,13 +1145,13 @@ function spawnParticles(x, y) {
 ═══════════════════════════════════════════════ */
 const SUITS = ['♠','♥','♦','♣'];
 const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-const RANK_NAME = { A:'ace', J:' jack', Q:'queen', K:'king' };
+const RANK_NAME = { A:'ace', J:'jack', Q:'queen', K:'king' };
 const SUIT_NAME = { '♠':'spades','♥':'hearts','♦':'diamonds','♣':'clubs' };
 
 function cardImgSrc(c) {
   const r = RANK_NAME[c.rank] || c.rank;
   const s = SUIT_NAME[c.suit];
-  return `PNG-cards-1.3 2/${r.trim()}_of_${s}.png`;
+  return `PNG-cards-1.3%202/${r}_of_${s}.png`;
 }
 
 function makeDeck(n) {
