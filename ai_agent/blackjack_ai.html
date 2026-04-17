@@ -801,7 +801,7 @@
     </div>
     <input type="file" id="file-input" accept=".env,text/plain">
     <div class="key-input-row">
-      <input type="password" class="key-text-input" id="key-text-input" placeholder="…or paste your API key directly (sk-ant-…)">
+      <input type="password" class="key-text-input" id="key-text-input" placeholder="…or paste your OpenAI key directly (sk-…)">
       <button class="key-set-btn" id="key-set-btn">SET KEY</button>
     </div>
     <div class="key-status" id="key-status"></div>
@@ -976,7 +976,7 @@
         </div>
         <input type="file" id="file-input2" accept=".env,text/plain">
         <div class="key-input-row">
-          <input type="password" class="key-text-input" id="key-text-input-2" placeholder="Paste API key (sk-ant-…)">
+          <input type="password" class="key-text-input" id="key-text-input-2" placeholder="Paste OpenAI key (sk-…)">
           <button class="key-set-btn" id="key-set-btn-2">SET</button>
         </div>
         <div class="key-status" id="key-status-2"></div>
@@ -1546,19 +1546,19 @@ What is your recommendation?`;
 
   setAiThinking(true);
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': AI.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'Authorization': `Bearer ${AI.apiKey}`
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'gpt-4o',
         max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }]
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ]
       })
     });
 
@@ -1568,7 +1568,7 @@ What is your recommendation?`;
     }
 
     const data = await res.json();
-    const rawText = data.content[0].text;
+    const rawText = data.choices[0].message.content;
     console.log('[AI] Raw response:', rawText);
 
     // Parse JSON — strip any accidental markdown fences
@@ -1598,8 +1598,8 @@ What is your recommendation?`;
 function friendlyAiError(err) {
   const msg = err.message||'';
   if (msg.includes('Failed to fetch')||msg.includes('NetworkError')||msg.includes('CORS'))
-    return '⚠ CORS/Network Error: Anthropic API may not allow direct browser requests. Ensure ANTHROPIC_API_KEY is set and try from a CORS-enabled environment.';
-  if (msg.includes('401')||msg.includes('Unauthorized')) return '⚠ Invalid API Key: Check your .env file.';
+    return '⚠ Network Error: Could not reach OpenAI API. Check your connection.';
+  if (msg.includes('401')||msg.includes('Unauthorized')) return '⚠ Invalid API Key: Check your OpenAI key.';
   if (msg.includes('429')) return '⚠ Rate Limited: Too many requests. Wait a moment.';
   if (msg.includes('500')||msg.includes('503')) return '⚠ Server Error: API is having issues. Try again.';
   return `⚠ Error: ${msg}`;
@@ -1609,17 +1609,17 @@ function friendlyAiError(err) {
    .ENV PARSING (Switchboard pattern)
 ═══════════════════════════════════════════════ */
 function parseEnvFile(text) {
-  // Look for ANTHROPIC_API_KEY=sk-ant-...
+  // Look for OPENAI_API_KEY=sk-...
   const lines = text.split('\n');
   for (const line of lines) {
     const [key, ...rest] = line.split('=');
-    if (key&&key.trim().toLowerCase().includes('anthropic')) {
+    if (key&&key.trim().toLowerCase().includes('openai')) {
       const val = rest.join('=').trim().replace(/^["']|["']$/g,'');
       if (val) return val;
     }
-    // Also accept any line with sk-ant
+    // Also accept any bare sk- key
     const trimmed = line.trim();
-    if (trimmed.startsWith('sk-ant')) return trimmed;
+    if (trimmed.startsWith('sk-')) return trimmed;
   }
   // Fallback: any API_KEY line
   for (const line of lines) {
@@ -1646,7 +1646,7 @@ function handleEnvFile(file, statusEl) {
       console.log('[AI] API key loaded from .env file');
     } else {
       statusEl.className = 'key-status err';
-      statusEl.textContent = '✗ No ANTHROPIC_API_KEY found in file';
+      statusEl.textContent = '✗ No OPENAI_API_KEY found in file';
       statusEl.style.display = 'block';
     }
   };
@@ -1952,7 +1952,7 @@ function wireKeyInput(inputId, btnId, statusId) {
   const statusEl = document.getElementById(statusId);
   function applyKey() {
     const val = input.value.trim();
-    if (val.startsWith('sk-ant')) {
+    if (val.startsWith('sk-')) {
       AI.apiKey = val;
       statusEl.className = 'key-status ok';
       statusEl.textContent = '✓ API key set — AI Agent ready';
@@ -1961,7 +1961,7 @@ function wireKeyInput(inputId, btnId, statusId) {
       console.log('[AI] API key set manually');
     } else if (val.length > 0) {
       statusEl.className = 'key-status err';
-      statusEl.textContent = '✗ Key must start with sk-ant-…';
+      statusEl.textContent = '✗ Key must start with sk-…';
     } else {
       statusEl.className = 'key-status err';
       statusEl.textContent = '✗ Please enter an API key';
